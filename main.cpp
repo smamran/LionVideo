@@ -8,12 +8,18 @@
 #include <QSlider>
 #include <QLabel>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QFileDialog>
 #include <QWheelEvent>
 #include <QStyle>
 #include <QTime>
 #include <QShortcut>
 #include <QKeySequence>
+#include <QTimer>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QFileInfo>
 
 // ১. কাস্টম সিকবার
 class ClickableSlider : public QSlider
@@ -71,6 +77,9 @@ public:
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setStyleSheet("background: black;");
         setFocusPolicy(Qt::NoFocus);
+
+        // ড্র্যাগ ইভেন্ট যাতে প্যারেন্ট উইন্ডোতে পৌঁছায়
+        setAcceptDrops(false);
     }
 
     QGraphicsVideoItem* getVideoItem() const { return videoItem; }
@@ -116,7 +125,7 @@ private:
     QGraphicsVideoItem* videoItem;
 };
 
-// ৩. মেইন প্লেয়ার উইন্ডো
+// ৩. মেইন প্লেয়ার উইন্ডো
 class VideoPlayerWindow : public QWidget
 {
     Q_OBJECT
@@ -126,6 +135,7 @@ public:
     {
         setWindowTitle("Advanced Media Player");
         resize(900, 550);
+        setAcceptDrops(true); // ড্র্যাগ অ্যান্ড ড্রপ সক্রিয় করা
 
         player = new QMediaPlayer(this);
         audioOutput = new QAudioOutput(this);
@@ -134,10 +144,12 @@ public:
         player->setAudioOutput(audioOutput);
         player->setVideoOutput(videoView->getVideoItem());
 
+        isLooping = true; // লুপ ডিফল্ট অন
+
         // UI কন্ট্রোলস
         openBtn = new QPushButton("Open", this);
         playBtn = new QPushButton("Play", this);
-        loopBtn = new QPushButton("Loop: Off", this);
+        loopBtn = new QPushButton("Loop: On", this);
         muteBtn = new QPushButton("Mute", this);
 
         openBtn->setFocusPolicy(Qt::NoFocus);
@@ -154,6 +166,25 @@ public:
         volumeSlider->setFixedWidth(100);
         volumeSlider->setFocusPolicy(Qt::NoFocus);
         audioOutput->setVolume(0.7f);
+
+        // OSD ওভারলে লেবেল
+        osdLabel = new QLabel(videoView);
+        osdLabel->setStyleSheet(
+            "QLabel {"
+            "  color: white;"
+            "  background-color: rgba(0, 0, 0, 160);"
+            "  font-size: 16px;"
+            "  font-weight: bold;"
+            "  border-radius: 6px;"
+            "  padding: 8px 16px;"
+            "}"
+            );
+        osdLabel->setAlignment(Qt::AlignCenter);
+        osdLabel->hide();
+
+        osdTimer = new QTimer(this);
+        osdTimer->setSingleShot(true);
+        connect(osdTimer, &QTimer::timeout, osdLabel, &QLabel::hide);
 
         // লেআউট সেটআপ
         controlContainer = new QWidget(this);
@@ -188,20 +219,45 @@ public:
 
         connect(volumeSlider, &QSlider::valueChanged, this, &VideoPlayerWindow::setVolume);
 
-        // ভিডিও শেষ হওয়ার হ্যান্ডলিং
         connect(player, &QMediaPlayer::mediaStatusChanged, this, &VideoPlayerWindow::handleMediaStatus);
 
-        // ভিডিও সাইজ ফিট করার সমাধান
         connect(videoView->getVideoItem(), &QGraphicsVideoItem::nativeSizeChanged, this, [this]()
-        {
-            videoView->updateVideoBounds();
-        });
+                {
+                    videoView->updateVideoBounds();
+                });
 
         setupShortcuts();
         qApp->installEventFilter(this);
     }
 
 protected:
+    // ড্র্যাগ ইভেন্ট গ্রহণ করা
+    void dragEnterEvent(QDragEnterEvent* event) override
+    {
+        if (event->mimeData()->hasUrls())
+        {
+            event->acceptProposedAction();
+        }
+    }
+
+    // ড্রপ ইভেন্ট হ্যান্ডেল করা
+    void dropEvent(QDropEvent* event) override
+    {
+        const QList<QUrl> urls = event->mimeData()->urls();
+        if (!urls.isEmpty())
+        {
+            QUrl fileUrl = urls.first();
+            playMedia(fileUrl);
+            event->acceptProposedAction();
+        }
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QWidget::resizeEvent(event);
+        repositionOSD();
+    }
+
     bool eventFilter(QObject* watched, QEvent* event) override
     {
         if (event->type() == QEvent::KeyPress)
@@ -224,6 +280,12 @@ protected:
             case Qt::Key_Space:
                 togglePlay();
                 return true;
+            case Qt::Key_L:
+                toggleLoop();
+                return true;
+            case Qt::Key_M:
+                toggleMute();
+                return true;
             case Qt::Key_Escape:
                 if (isFullScreen()) toggleFullScreen();
                 return true;
@@ -241,6 +303,40 @@ protected:
     }
 
 private:
+    void playMedia(const QUrl& url)
+    {
+        player->setSource(url);
+        player->play();
+        playBtn->setText("Pause");
+
+        // OSD-তে ফাইলের নাম দেখানো
+        QString fileName = QFileInfo(url.toLocalFile()).fileName();
+        if (!fileName.isEmpty())
+        {
+            showOSD(fileName);
+        }
+    }
+
+    void showOSD(const QString& text)
+    {
+        osdLabel->setText(text);
+        osdLabel->adjustSize();
+        repositionOSD();
+        osdLabel->show();
+        osdLabel->raise();
+        osdTimer->start(1500);
+    }
+
+    void repositionOSD()
+    {
+        if (osdLabel && videoView)
+        {
+            int x = videoView->width() - osdLabel->width() - 25;
+            int y = 25;
+            osdLabel->move(qMax(10, x), y);
+        }
+    }
+
     void setupShortcuts()
     {
         QShortcut* openShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_O), this);
@@ -274,10 +370,12 @@ private:
         if (isLooping)
         {
             loopBtn->setText("Loop: On");
+            showOSD("Loop: On");
         }
         else
         {
             loopBtn->setText("Loop: Off");
+            showOSD("Loop: Off");
         }
     }
 
@@ -292,6 +390,7 @@ private:
     {
         int newVolume = qBound(0, volumeSlider->value() + delta, 100);
         volumeSlider->setValue(newVolume);
+        showOSD(QString("Volume: %1%").arg(newVolume));
     }
 
     void toggleFullScreen()
@@ -307,6 +406,7 @@ private:
             showFullScreen();
         }
         videoView->updateVideoBounds();
+        repositionOSD();
     }
 
     void openFile()
@@ -315,9 +415,7 @@ private:
                                                         "Media Files (*.mp4 *.mkv *.avi *.mp3 *.wav *.webm)");
         if (!fileName.isEmpty())
         {
-            player->setSource(QUrl::fromLocalFile(fileName));
-            player->play();
-            playBtn->setText("Pause");
+            playMedia(QUrl::fromLocalFile(fileName));
         }
     }
 
@@ -340,6 +438,7 @@ private:
         bool isMuted = audioOutput->isMuted();
         audioOutput->setMuted(!isMuted);
         muteBtn->setText(isMuted ? "Mute" : "Unmute");
+        showOSD(!isMuted ? "Mute" : "Unmute");
     }
 
     void setVolume(int value)
@@ -393,15 +492,17 @@ private:
     QSlider* volumeSlider;
     QLabel* timeLabel;
 
+    QLabel* osdLabel;
+    QTimer* osdTimer;
+
     QWidget* controlContainer;
-    bool isLooping = false;
+    bool isLooping;
 };
 
 #include "main.moc"
 
 int main(int argc, char* argv[])
 {
-    // AV1 Hardware Decoding / Vulkan Error ফিক্স
     qputenv("QT_MEDIA_BACKEND", "ffmpeg");
     qputenv("FFMPEG_OPT_hwaccel", "none");
     qputenv("FFMPEG_LOG_LEVEL", "quiet");

@@ -17,7 +17,7 @@ set(CMAKE_AUTORCC ON)
 # Qt6 Packages required for multimedia
 find_package(Qt6 COMPONENTS Widgets Multimedia MultimediaWidgets REQUIRED)
 
-add_executable(LionVideo main.cpp)
+add_executable(LionVideo WIN32 main.cpp)
 
 target_link_libraries(LionVideo PRIVATE
         Qt6::Widgets
