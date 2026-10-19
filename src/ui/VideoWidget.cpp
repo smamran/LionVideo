@@ -5,6 +5,8 @@
 #include <QMimeData>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QPushButton>
+#include <QContextMenuEvent>
 
 namespace ui {
 
@@ -22,14 +24,15 @@ VideoWidget::VideoWidget(QWidget *parent)
     setStyleSheet("background-color: #0C0C0E;");
     setFocusPolicy(Qt::NoFocus);
     setMouseTracking(true);
+    viewport()->setMouseTracking(true);
     setAcceptDrops(true);
 
     // Setup placeholder
-    m_placeholderWidget = new QWidget(this);
-    m_placeholderWidget->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_placeholderWidget = new QWidget(viewport());
+    m_placeholderWidget->installEventFilter(this);
     auto *placeholderLayout = new QVBoxLayout(m_placeholderWidget);
     placeholderLayout->setAlignment(Qt::AlignCenter);
-    placeholderLayout->setSpacing(12);
+    placeholderLayout->setSpacing(14);
 
     auto *iconLabel = new QLabel(m_placeholderWidget);
     iconLabel->setFixedSize(72, 72);
@@ -41,13 +44,39 @@ VideoWidget::VideoWidget(QWidget *parent)
     titleLabel->setStyleSheet("font-size: 18px; font-weight: 600; color: #FFFFFF;");
     titleLabel->setAlignment(Qt::AlignCenter);
 
-    auto *descLabel = new QLabel("Drag and drop audio or video files here, or press 'O' to Open", m_placeholderWidget);
+    auto *descLabel = new QLabel("Drag and drop audio or video files here, or browse", m_placeholderWidget);
     descLabel->setStyleSheet("font-size: 13px; color: #8E8E93;");
     descLabel->setAlignment(Qt::AlignCenter);
+
+    auto *browseBtn = new QPushButton("  Browse Files", m_placeholderWidget);
+    browseBtn->setIcon(utils::IconHelper::folderOpenIcon());
+    browseBtn->setIconSize(QSize(16, 16));
+    browseBtn->setCursor(Qt::PointingHandCursor);
+    browseBtn->setFixedSize(150, 38);
+    browseBtn->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #60CDFF;"
+        "  color: #000000;"
+        "  font-size: 13px;"
+        "  font-weight: 600;"
+        "  border: none;"
+        "  border-radius: 19px;"
+        "  padding: 6px 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #78D5FF;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #44B8F0;"
+        "}"
+    );
+    browseBtn->setToolTip("Browse Media Files (O)");
+    connect(browseBtn, &QPushButton::clicked, this, &VideoWidget::openFileRequested);
 
     placeholderLayout->addWidget(iconLabel, 0, Qt::AlignCenter);
     placeholderLayout->addWidget(titleLabel, 0, Qt::AlignCenter);
     placeholderLayout->addWidget(descLabel, 0, Qt::AlignCenter);
+    placeholderLayout->addWidget(browseBtn, 0, Qt::AlignCenter);
 
     connect(m_videoItem, &QGraphicsVideoItem::nativeSizeChanged, this, [this]() {
         updateVideoBounds();
@@ -77,8 +106,45 @@ void VideoWidget::resizeEvent(QResizeEvent *event) {
     QGraphicsView::resizeEvent(event);
     updateVideoBounds();
     if (m_placeholderWidget) {
-        m_placeholderWidget->setGeometry(rect());
+        m_placeholderWidget->setGeometry(viewport()->rect());
     }
+    emit widgetResized();
+}
+
+bool VideoWidget::viewportEvent(QEvent *event) {
+    if (event->type() == QEvent::MouseMove) {
+        emit mouseMoved();
+        auto *mouseEv = static_cast<QMouseEvent*>(event);
+        if (mouseEv && mouseEv->position().y() >= (viewport()->height() - 120)) {
+            emit mouseNearBottom();
+        }
+    }
+    return QGraphicsView::viewportEvent(event);
+}
+
+void VideoWidget::contextMenuEvent(QContextMenuEvent *event) {
+    emit contextMenuRequested(event->globalPos());
+    event->accept();
+}
+
+bool VideoWidget::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == m_placeholderWidget) {
+        if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
+            auto *dragEv = static_cast<QDropEvent*>(event);
+            if (dragEv->mimeData()->hasUrls()) {
+                dragEv->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::Drop) {
+            auto *dropEv = static_cast<QDropEvent*>(event);
+            if (dropEv->mimeData()->hasUrls()) {
+                emit filesDropped(dropEv->mimeData()->urls());
+                dropEv->acceptProposedAction();
+                return true;
+            }
+        }
+    }
+    return QGraphicsView::eventFilter(watched, event);
 }
 
 void VideoWidget::mouseDoubleClickEvent(QMouseEvent *event) {
@@ -99,6 +165,10 @@ void VideoWidget::mousePressEvent(QMouseEvent *event) {
         m_isDragging = false;
         m_dragStartGlobalPos = event->globalPosition().toPoint();
         m_dragStartWindowPos = window()->pos();
+        event->accept();
+        return;
+    } else if (event->button() == Qt::RightButton) {
+        emit contextMenuRequested(event->globalPosition().toPoint());
         event->accept();
         return;
     }

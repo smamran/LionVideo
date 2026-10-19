@@ -12,7 +12,16 @@ ControlBar::ControlBar(QWidget *parent)
     setObjectName("ControlBarWidget");
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAttribute(Qt::WA_NoSystemBackground, true);
+    setMouseTracking(true);
     setupUI();
+}
+
+QSize ControlBar::sizeHint() const {
+    return QSize(680, 80);
+}
+
+QSize ControlBar::minimumSizeHint() const {
+    return QSize(280, 76);
 }
 
 void ControlBar::setupUI() {
@@ -400,6 +409,7 @@ void ControlBar::mousePressEvent(QMouseEvent *event) {
 }
 
 void ControlBar::mouseMoveEvent(QMouseEvent *event) {
+    emit mouseHoverStateChanged(true);
     if (m_leftPressed && m_isPiP && (event->buttons() & Qt::LeftButton)) {
         QPoint delta = event->globalPosition().toPoint() - m_dragStartGlobalPos;
         if (!m_isDragging && delta.manhattanLength() >= 4) {

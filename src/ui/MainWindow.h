@@ -35,6 +35,7 @@ public slots:
     void adjustVolume(int deltaPercent);
     void seekRelative(qint64 deltaMs);
     void adjustSpeed(qreal deltaRate);
+    void showContextMenu(const QPoint &globalPos);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

@@ -30,6 +30,9 @@ public:
     void setFullscreen(bool isFullscreen);
     void setPiPMode(bool isPiP);
 
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
 signals:
     void playToggled();
     void nextClicked();

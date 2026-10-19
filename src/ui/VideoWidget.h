@@ -25,12 +25,19 @@ public:
 signals:
     void doubleClicked();
     void mouseMoved();
+    void mouseNearBottom();
     void singleClicked();
     void wheelScrolled(int delta);
     void filesDropped(const QList<QUrl> &urls);
+    void openFileRequested();
+    void contextMenuRequested(const QPoint &globalPos);
+    void widgetResized();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    bool viewportEvent(QEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;

@@ -282,6 +282,11 @@ QString StyleManager::getMenuDarkStyleSheet() {
             color: #60CDFF;
             font-weight: bold;
         }
+        QMenu::separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.12);
+            margin: 4px 8px;
+        }
     )");
 }
 

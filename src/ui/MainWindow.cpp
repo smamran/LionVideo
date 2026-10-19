@@ -9,6 +9,8 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QDir>
+#include <QMenu>
+#include <QAction>
 
 #if defined(Q_OS_WIN)
 #include <windows.h>
@@ -66,21 +68,26 @@ void MainWindow::setupUI() {
     m_engine->setVideoOutput(m_videoWidget->videoItem());
     rootLayout->addWidget(m_videoWidget, 1);
 
-    // 3. Floating Overlays (children of m_videoWidget)
+    // 3. Floating Overlays (children of m_videoWidget->viewport())
     // Control Bar
-    m_controlBar = new ControlBar(m_videoWidget);
+    m_controlBar = new ControlBar(m_videoWidget->viewport());
     m_controlBarOpacity = new QGraphicsOpacityEffect(m_controlBar);
     m_controlBar->setGraphicsEffect(m_controlBarOpacity);
     m_controlBarOpacity->setOpacity(1.0);
 
     m_controlBarAnimation = new QPropertyAnimation(m_controlBarOpacity, "opacity", this);
+    connect(m_controlBarAnimation, &QPropertyAnimation::finished, this, [this]() {
+        if (m_controlBarOpacity->opacity() <= 0.01) {
+            m_controlBar->hide();
+        }
+    });
 
     // Playlist Drawer
-    m_playlistDrawer = new PlaylistDrawer(m_videoWidget);
+    m_playlistDrawer = new PlaylistDrawer(m_videoWidget->viewport());
     m_playlistDrawer->hide();
 
     // OSD Notification Toast
-    m_osdLabel = new OSDLabel(m_videoWidget);
+    m_osdLabel = new OSDLabel(m_videoWidget->viewport());
 
     // Idle timer for auto-hiding controls (2.5 seconds)
     m_idleTimer = new QTimer(this);
@@ -92,12 +99,18 @@ void MainWindow::setupUI() {
     connect(m_videoWidget, &VideoWidget::doubleClicked, this, &MainWindow::toggleFullScreen);
     connect(m_videoWidget, &VideoWidget::singleClicked, this, &MainWindow::togglePlay);
     connect(m_videoWidget, &VideoWidget::mouseMoved, this, &MainWindow::onUserInteraction);
+    connect(m_videoWidget, &VideoWidget::mouseNearBottom, this, &MainWindow::showControls);
+    connect(m_videoWidget, &VideoWidget::widgetResized, this, &MainWindow::repositionOverlays);
     connect(m_videoWidget, &VideoWidget::wheelScrolled, this, [this](int delta) {
         adjustVolume(delta > 0 ? 5 : -5);
     });
     connect(m_videoWidget, &VideoWidget::filesDropped, this, [this](const QList<QUrl> &urls) {
         loadMediaFiles(urls, /*addToQueue=*/false);
     });
+    connect(m_videoWidget, &VideoWidget::openFileRequested, this, [this]() {
+        openFiles(/*addToQueue=*/false);
+    });
+    connect(m_videoWidget, &VideoWidget::contextMenuRequested, this, &MainWindow::showContextMenu);
 
     // Signal connections: ControlBar
     connect(m_controlBar, &ControlBar::playToggled, m_engine, &core::MediaPlayerEngine::togglePlay);
@@ -153,6 +166,8 @@ void MainWindow::setupUI() {
     m_controlBar->setPlaybackRate(m_engine->playbackRate());
     m_controlBar->setLoopMode(m_engine->loopMode());
     m_controlBar->setShuffle(m_engine->isShuffle());
+
+    repositionOverlays();
 }
 
 void MainWindow::setupShortcuts() {
@@ -160,10 +175,12 @@ void MainWindow::setupShortcuts() {
 }
 
 void MainWindow::repositionOverlays() {
-    if (!m_videoWidget) return;
+    if (!m_videoWidget || !m_controlBar) return;
 
-    int vWidth = m_videoWidget->width();
-    int vHeight = m_videoWidget->height();
+    QWidget *vp = m_videoWidget->viewport();
+    int vWidth = vp ? vp->width() : m_videoWidget->width();
+    int vHeight = vp ? vp->height() : m_videoWidget->height();
+    if (vWidth <= 0 || vHeight <= 0) return;
 
     // Reposition ControlBar (floating near bottom)
     int maxBarWidth = m_isPiP ? (vWidth - 16) : 840;
@@ -183,7 +200,7 @@ void MainWindow::repositionOverlays() {
     }
 
     // Reposition OSDLabel (top right)
-    m_osdLabel->reposition(m_videoWidget->size());
+    m_osdLabel->reposition(vp ? vp->size() : m_videoWidget->size());
     m_osdLabel->raise();
 }
 
@@ -207,6 +224,14 @@ void MainWindow::onIdleTimeout() {
     if (m_engine->playbackState() == QMediaPlayer::PlayingState &&
         !m_isControlBarHovered &&
         !m_isDrawerOpen) {
+        // Do not auto-hide if mouse cursor is currently resting near bottom controls
+        if (m_videoWidget && m_videoWidget->viewport()) {
+            QPoint localPos = m_videoWidget->viewport()->mapFromGlobal(QCursor::pos());
+            if (m_videoWidget->viewport()->rect().contains(localPos) && localPos.y() >= (m_videoWidget->viewport()->height() - 120)) {
+                m_idleTimer->start();
+                return;
+            }
+        }
         hideControls();
         if (isFullScreen()) {
             setCursor(Qt::BlankCursor);
@@ -225,30 +250,27 @@ void MainWindow::onControlBarHoverChanged(bool isHovered) {
 }
 
 void MainWindow::showControls() {
+    repositionOverlays();
+    m_controlBar->show();
+    m_controlBar->raise();
     if (m_controlBarOpacity->opacity() >= 0.99 && m_controlBar->isVisible()) {
         return;
     }
     m_controlBarAnimation->stop();
-    m_controlBar->show();
-    m_controlBarAnimation->setDuration(150);
+    m_controlBarAnimation->setDuration(120);
     m_controlBarAnimation->setStartValue(m_controlBarOpacity->opacity());
     m_controlBarAnimation->setEndValue(1.0);
     m_controlBarAnimation->start();
 }
 
 void MainWindow::hideControls() {
-    if (m_controlBarOpacity->opacity() <= 0.01) {
+    if (m_controlBarOpacity->opacity() <= 0.01 && !m_controlBar->isVisible()) {
         return;
     }
     m_controlBarAnimation->stop();
-    m_controlBarAnimation->setDuration(300);
+    m_controlBarAnimation->setDuration(250);
     m_controlBarAnimation->setStartValue(m_controlBarOpacity->opacity());
     m_controlBarAnimation->setEndValue(0.0);
-    connect(m_controlBarAnimation, &QPropertyAnimation::finished, this, [this]() {
-        if (m_controlBarOpacity->opacity() <= 0.01) {
-            m_controlBar->hide();
-        }
-    });
     m_controlBarAnimation->start();
 }
 
@@ -440,6 +462,7 @@ void MainWindow::loadMediaFiles(const QList<QUrl> &urls, bool addToQueue) {
             m_engine->playIndex(0);
         }
         m_videoWidget->showPlaceholder(false);
+        showControls();
     } else {
         // Explicitly adding to queue (e.g. '+' button, Ctrl+O, or dropping on drawer)
         int oldCount = m_engine->playlist().size();
@@ -451,8 +474,8 @@ void MainWindow::loadMediaFiles(const QList<QUrl> &urls, bool addToQueue) {
                 m_osdLabel->showNotification("File(s) already in Queue", utils::IconHelper::playlistIcon());
             }
         }
+        onUserInteraction();
     }
-    onUserInteraction();
 }
 
 void MainWindow::onFilesDropped(const QList<QUrl> &urls) {
@@ -464,16 +487,21 @@ void MainWindow::onCurrentTrackChanged(int index, const core::PlaylistItem &item
     m_titleBar->setTitle(item.title);
     m_osdLabel->showNotification(item.title, utils::IconHelper::playIcon(), 2500);
     m_videoWidget->showPlaceholder(false);
-    onUserInteraction();
+    showControls();
 }
 
 void MainWindow::onPlaybackStateChanged(QMediaPlayer::PlaybackState state) {
     m_controlBar->setPlaybackState(state);
-    if (state == QMediaPlayer::StoppedState && m_engine->playlist().isEmpty()) {
+    if (state == QMediaPlayer::PlayingState) {
+        m_videoWidget->showPlaceholder(false);
+        showControls();
+    } else if (state == QMediaPlayer::StoppedState && m_engine->playlist().isEmpty()) {
         m_videoWidget->showPlaceholder(true);
         m_titleBar->setTitle("");
+        repositionOverlays();
+    } else {
+        onUserInteraction();
     }
-    onUserInteraction();
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
@@ -615,7 +643,25 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
     if (eventType == "windows_generic_MSG") {
         MSG *msg = static_cast<MSG*>(message);
-        if (msg->message == WM_NCHITTEST && !isFullScreen() && !m_isPiP) {
+        if (msg->message == WM_GETMINMAXINFO) {
+            auto *mmi = reinterpret_cast<MINMAXINFO *>(msg->lParam);
+            HMONITOR hMonitor = MonitorFromWindow(reinterpret_cast<HWND>(winId()), MONITOR_DEFAULTTONEAREST);
+            if (hMonitor) {
+                MONITORINFO mi;
+                mi.cbSize = sizeof(MONITORINFO);
+                if (GetMonitorInfo(hMonitor, &mi)) {
+                    RECT rcWork = mi.rcWork;
+                    RECT rcMonitor = mi.rcMonitor;
+                    mmi->ptMaxPosition.x = rcWork.left - rcMonitor.left;
+                    mmi->ptMaxPosition.y = rcWork.top - rcMonitor.top;
+                    mmi->ptMaxSize.x = rcWork.right - rcWork.left;
+                    mmi->ptMaxSize.y = rcWork.bottom - rcWork.top;
+                    *result = 0;
+                    return true;
+                }
+            }
+        }
+        if (msg->message == WM_NCHITTEST && !isFullScreen() && !isMaximized() && !m_isPiP) {
             POINT pt = { GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam) };
             RECT rc;
             GetWindowRect(reinterpret_cast<HWND>(winId()), &rc);
@@ -638,5 +684,42 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 #endif
+
+void MainWindow::showContextMenu(const QPoint &globalPos) {
+    auto *menu = new QMenu(this);
+    menu->setStyleSheet(utils::StyleManager::getMenuDarkStyleSheet());
+
+    auto *openAction = menu->addAction(utils::IconHelper::folderOpenIcon(), "Open File...\tO");
+    connect(openAction, &QAction::triggered, this, [this]() {
+        openFiles(/*addToQueue=*/false);
+    });
+
+    auto *addQueueAction = menu->addAction(utils::IconHelper::plusIcon(), "Add to Queue...\tCtrl+O");
+    connect(addQueueAction, &QAction::triggered, this, [this]() {
+        openFiles(/*addToQueue=*/true);
+    });
+
+    menu->addSeparator();
+
+    bool isPlaying = (m_engine->playbackState() == QMediaPlayer::PlayingState);
+    QString playText = isPlaying ? "Pause\tSpace" : "Play\tSpace";
+    QIcon playIcon = isPlaying ? utils::IconHelper::pauseIcon() : utils::IconHelper::playIcon();
+    auto *playAction = menu->addAction(playIcon, playText);
+    connect(playAction, &QAction::triggered, this, &MainWindow::togglePlay);
+
+    auto *pipAction = menu->addAction(utils::IconHelper::pipIcon(), m_isPiP ? "Exit PiP\tP" : "Picture-in-Picture\tP");
+    connect(pipAction, &QAction::triggered, this, &MainWindow::togglePiP);
+
+    if (!m_isPiP) {
+        auto *fsAction = menu->addAction(utils::IconHelper::fullscreenIcon(), isFullScreen() ? "Exit Fullscreen\tF" : "Fullscreen\tF");
+        connect(fsAction, &QAction::triggered, this, &MainWindow::toggleFullScreen);
+
+        auto *queueAction = menu->addAction(utils::IconHelper::playlistIcon(), "Play Queue\tCtrl+Q");
+        connect(queueAction, &QAction::triggered, this, &MainWindow::togglePlaylistDrawer);
+    }
+
+    menu->exec(globalPos);
+    delete menu;
+}
 
 } // namespace ui

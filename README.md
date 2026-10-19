@@ -59,8 +59,12 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 - **Shuffle Mode**: Press `S` or click the Shuffle icon to randomize queue playback order.
 
 ### File Opening & Play Queue
+- **Startup "Browse Files" Button**:
+  - When opening the player with no active media, an intuitive **Browse Files** button is prominently displayed in the center alongside drag-and-drop support.
+- **Right-Click Context Menu (`Open (O)`)**:
+  - Right-click anywhere on the video screen during playback (or on the empty screen) to open a quick context menu with **Open File... (O)**, **Add to Queue... (Ctrl+O)**, **Play / Pause**, **Picture-in-Picture (P)**, and **Fullscreen (F)**.
 - **Normal Open (`O`)**:
-  - Press `O` or drop files onto the video screen to open media.
+  - Press `O`, click the Browse button, or drop files onto the video screen to open media.
   - Clears the previous queue, loads the selected file(s), and starts playback immediately.
   - Remembers the **last opened file directory** across application restarts.
 - **Add to Queue (`Ctrl + O` or `+` Button)**:
@@ -111,6 +115,7 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 | `Down Arrow` | Volume Down | Decrease audio volume by 5% |
 | `Mouse Scroll` | Volume Adjust | Scroll up/down anywhere on the video area |
 | `M` | Mute / Unmute | Toggles audio mute state |
+| `Right Click` | Context Menu | Open context menu with Open (O), Add to Queue, PiP, etc. |
 | `O` | Open Media | Opens file dialog in last directory & plays immediately |
 | `Ctrl + O` | Add to Queue | Opens file dialog to append media to queue without stopping |
 | `P` | Toggle PiP | Enter or exit Picture-in-Picture always-on-top mode |
