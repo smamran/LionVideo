@@ -1,0 +1,17 @@
+# Build directories
+build/
+cmake-build-*/
+.cache/
+
+# IDE files
+.idea/
+*.user
+*.suo
+*.userosv
+*.sln.docstates
+
+# Output binaries
+*.exe
+*.dll
+*.obj
+*.o

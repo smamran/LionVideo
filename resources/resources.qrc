@@ -1,0 +1,33 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>player.webp</file>
+    <file>player.png</file>
+    <file>player.ico</file>
+    <file>app.png</file>
+</qresource>
+<qresource prefix="/resources">
+    <file>icons/play.svg</file>
+    <file>icons/pause.svg</file>
+    <file>icons/prev.svg</file>
+    <file>icons/next.svg</file>
+    <file>icons/volume_high.svg</file>
+    <file>icons/volume_med.svg</file>
+    <file>icons/volume_low.svg</file>
+    <file>icons/volume_muted.svg</file>
+    <file>icons/fullscreen.svg</file>
+    <file>icons/fullscreen_exit.svg</file>
+    <file>icons/loop.svg</file>
+    <file>icons/loop_one.svg</file>
+    <file>icons/shuffle.svg</file>
+    <file>icons/pip.svg</file>
+    <file>icons/playlist.svg</file>
+    <file>icons/speed.svg</file>
+    <file>icons/folder_open.svg</file>
+    <file>icons/window_min.svg</file>
+    <file>icons/window_max.svg</file>
+    <file>icons/window_restore.svg</file>
+    <file>icons/window_close.svg</file>
+    <file>icons/trash.svg</file>
+    <file>icons/plus.svg</file>
+</qresource>
+</RCC>
