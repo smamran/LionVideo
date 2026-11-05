@@ -8,8 +8,37 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 
 ---
 
+## 📦 Downloads & Verification
+
+| Asset | Platform / OS | Type | Size | SHA-256 Checksum |
+| :--- | :--- | :--- | :--- | :--- |
+| **[`lionvideo_2.0.0_amd64.deb`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/lionvideo_2.0.0_amd64.deb)** | Ubuntu / Debian (x86_64) | Debian Package | 486 KB | `4C2465F2A4E80F4E4F67BED652B81AB75DFB5149F2DA55D9C490FE0CBCF2685E` |
+| **[`LionVideo-2.0.0-Setup.exe`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-Setup.exe)** | Windows 10 / 11 (x64) | Single-File Installer | 17.97 MB | `55A5356B8D474794B6E5FF326869D82A02AF8917B90172106AA0F49BC31F2381` |
+| **[`LionVideo-2.0.0-windows-x64-portable.zip`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-windows-x64-portable.zip)** | Windows 10 / 11 (x64) | Portable Archive | 22.31 MB | `4E3255BE4BDEB16550AD2041D444C46A61EBF80D0CC17E196526E3EF0FF68A6F` |
+
+---
+
+## 🚀 Getting Started
+
+- **Ubuntu / Debian (`.deb`)**:
+  Download `lionvideo_2.0.0_amd64.deb` and install via APT to automatically resolve dependencies:
+  ```bash
+  sudo apt install ./lionvideo_2.0.0_amd64.deb
+  ```
+  Launches with `lionvideo` from the terminal or via the **Lion Media Player** icon in your desktop app launcher.
+
+- **Windows Installer (`Setup.exe`)**:
+  Run `LionVideo-2.0.0-Setup.exe` to install to your system with desktop and Start Menu shortcuts (per-user or all-users, no admin privileges required).
+
+- **Windows Portable (`.zip`)**:
+  Extract `LionVideo-2.0.0-windows-x64-portable.zip` anywhere and run `LionVideo.exe` directly without installation.
+
+---
+
 ## 📖 Table of Contents
 
+- [📦 Downloads & Verification](#-downloads--verification)
+- [🚀 Getting Started](#-getting-started)
 - [User Guide & Features](#-user-guide--features)
   - [Core Playback & Seeking](#core-playback--seeking)
   - [Audio & Volume Control](#audio--volume-control)
