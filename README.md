@@ -81,8 +81,11 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 
 ### Picture-in-Picture (PiP) Mode
 - **Instant PiP Toggle (`P`)**: Press `P` or click the PiP button in the title bar or control bar to detach into an always-on-top compact window (`420x236`).
+- **Always on Top on Both Ubuntu & Windows**:
+  - On Windows, uses `Qt::WindowStaysOnTopHint` (`WS_EX_TOPMOST`).
+  - On Ubuntu / Linux, sets `Qt::WindowStaysOnTopHint | Qt::Tool` and uses X11/XWayland (`_NET_WM_STATE_ABOVE`), ensuring GNOME Mutter and other Linux window managers keep the player pinned above all other desktop applications.
 - **Hold & Drag Window Repositioning**:
-  - Click and hold the left mouse button anywhere on the PiP player (video area or control bar) and drag to move the player freely across any monitor or desktop.
+  - Click and hold the left mouse button anywhere on the PiP player (video area or control bar) and drag to move the player freely across any monitor or desktop (supporting native Wayland/X11 system moves).
   - The cursor switches to a closed hand grab icon (`Qt::ClosedHandCursor`) during dragging.
   - Releasing after dragging will not trigger an accidental play/pause toggle.
 - **Seamless Translucent Controls**: Sliders and buttons render transparently with no dark bounding boxes below the track.

@@ -4,6 +4,7 @@
 #include "../utils/StyleManager.h"
 #include <QGraphicsDropShadowEffect>
 #include <QActionGroup>
+#include <QWindow>
 
 namespace ui {
 
@@ -411,6 +412,15 @@ void ControlBar::mousePressEvent(QMouseEvent *event) {
 void ControlBar::mouseMoveEvent(QMouseEvent *event) {
     emit mouseHoverStateChanged(true);
     if (m_leftPressed && m_isPiP && (event->buttons() & Qt::LeftButton)) {
+        if (window() && window()->windowHandle()) {
+            if (window()->windowHandle()->startSystemMove()) {
+                m_leftPressed = false;
+                m_isDragging = false;
+                unsetCursor();
+                event->accept();
+                return;
+            }
+        }
         QPoint delta = event->globalPosition().toPoint() - m_dragStartGlobalPos;
         if (!m_isDragging && delta.manhattanLength() >= 4) {
             m_isDragging = true;

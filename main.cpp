@@ -10,6 +10,15 @@ int main(int argc, char *argv[]) {
 #else
     // On Linux/Ubuntu, let Qt select the available backend (e.g. GStreamer on Qt 6.2-6.4 or FFmpeg on Qt 6.5+)
     // while honoring any user-specified QT_MEDIA_BACKEND override
+
+    // Prefer X11/XWayland (xcb) by default on Linux when an X display is available,
+    // ensuring Picture-in-Picture "Always on Top" (Qt::WindowStaysOnTopHint / _NET_WM_STATE_ABOVE)
+    // is fully honored by GNOME Mutter and X11 compositors.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        if (!qEnvironmentVariableIsEmpty("DISPLAY")) {
+            qputenv("QT_QPA_PLATFORM", "xcb");
+        }
+    }
 #endif
     qputenv("FFMPEG_OPT_hwaccel", "none");
     qputenv("FFMPEG_LOG_LEVEL", "quiet");

@@ -351,10 +351,19 @@ void MainWindow::togglePiP() {
             togglePlaylistDrawer();
         }
         m_titleBar->hide();
+#if defined(Q_OS_WIN)
         setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+#else
+        setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
+#endif
         setMinimumSize(320, 180);
         resize(420, 236);
         show();
+        raise();
+        activateWindow();
+        if (windowHandle()) {
+            windowHandle()->setFlag(Qt::WindowStaysOnTopHint, true);
+        }
         m_osdLabel->showNotification("Picture-in-Picture: On", utils::IconHelper::pipIcon());
     } else {
         setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
@@ -364,6 +373,11 @@ void MainWindow::togglePiP() {
         }
         m_titleBar->show();
         show();
+        raise();
+        activateWindow();
+        if (windowHandle()) {
+            windowHandle()->setFlag(Qt::WindowStaysOnTopHint, false);
+        }
         m_osdLabel->showNotification("Picture-in-Picture: Off", utils::IconHelper::pipIcon());
     }
 
