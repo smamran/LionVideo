@@ -141,6 +141,11 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
         RENAME lionvideo.png
     )
+    install(FILES resources/player.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/pixmaps
+        RENAME lionvideo.png
+    )
+    install(CODE "file(CREATE_LINK LionVideo \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/lionvideo\" SYMBOLIC)")
 endif()
 
 # Convenience target to run the executable cross-platform
@@ -150,3 +155,49 @@ add_custom_target(run
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Launching LionVideo..."
 )
+
+# ==============================================================================
+# CPack Packaging Configuration (.deb for Debian/Ubuntu)
+# ==============================================================================
+set(CPACK_PACKAGE_NAME "lionvideo")
+set(CPACK_PACKAGE_VENDOR "LionVideo Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern high-performance media player built with Qt 6 and C++20")
+set(CPACK_PACKAGE_DESCRIPTION "Lion Media Player is a modern, high-performance media player built with Qt 6 and C++20. It features custom styled UI, playlist support, hardware-accelerated playback, volume boost, and sleek dark design.")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com")
+set(CPACK_PACKAGE_CONTACT "LionVideo Project <info@lionvideo.org>")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+
+if(UNIX AND NOT APPLE)
+    set(CPACK_GENERATOR "DEB")
+endif()
+
+# Debian package specific settings
+set(CPACK_DEBIAN_PACKAGE_NAME "lionvideo")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "LionVideo Project <info@lionvideo.org>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "video")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins")
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-svg-plugins")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian/postrm"
+)
+
+include(CPack)
+
+if(UNIX AND NOT APPLE)
+    # Convenience target to build .deb and copy to dist/
+    add_custom_target(deb
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-deb.sh
+        DEPENDS LionVideo
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Building Debian package (.deb) into dist/..."
+    )
+endif()
+
+

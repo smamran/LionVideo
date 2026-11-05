@@ -30,5 +30,12 @@
     "command": "cmake --build build --target clean",
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always"
+  },
+  {
+    "label": "CMake: Package Debian (.deb)",
+    "command": "cmake --build build --target deb",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "allow_concurrent_runs": false
   }
 ]

@@ -24,6 +24,7 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
   - [Architecture & Codebase Overview](#architecture--codebase-overview)
   - [Prerequisites & System Requirements](#prerequisites--system-requirements)
   - [Building from Source (Command Line)](#building-from-source-command-line)
+  - [Ubuntu / Debian Packaging (.deb)](#ubuntu--debian-packaging-deb)
   - [Building with Qt Creator](#building-with-qt-creator)
   - [Windows Deployment & Packaging](#windows-deployment--packaging)
   - [Technical Highlights](#technical-highlights)
@@ -250,6 +251,49 @@ The compiled binary will be placed at:
 To install the application, desktop launcher entry, and icon:
 ```bash
 sudo cmake --install build
+```
+
+---
+
+### Ubuntu / Debian Packaging (.deb)
+
+You can build a native Debian package (`.deb`) compatible with Ubuntu, Debian, Linux Mint, Pop!_OS, and other Debian-based operating systems. The packaging process automatically calculates all dynamic shared-library dependencies via `dpkg-shlibdeps`, integrates `.desktop` application menu launchers, system icons (`hicolor` and `pixmaps`), and command-line aliases (`lionvideo` and `LionVideo`).
+
+#### Build the Package
+Run the packaging script or CMake target:
+```bash
+# Method 1: Packaging helper script (configures, compiles, and packages)
+./scripts/build-deb.sh
+
+# Method 2: CMake target
+cmake --build build --target deb
+
+# Method 3: Direct CPack
+cd build && cpack -G DEB
+```
+
+The completed `.deb` package will be saved in:
+```bash
+dist/lionvideo_2.0.0_amd64.deb
+```
+
+#### Install the Package
+```bash
+# Recommended: Install with APT (automatically resolves and downloads dependencies)
+sudo apt install ./dist/lionvideo_2.0.0_amd64.deb
+
+# Alternative: Install with dpkg
+sudo dpkg -i dist/lionvideo_2.0.0_amd64.deb
+sudo apt-get install -f
+```
+
+#### Launch & Uninstall
+```bash
+# Launch from terminal or application launcher
+lionvideo
+
+# To uninstall
+sudo apt remove lionvideo
 ```
 
 ---
