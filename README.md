@@ -24,7 +24,7 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
   - [Architecture & Codebase Overview](#architecture--codebase-overview)
   - [Prerequisites & System Requirements](#prerequisites--system-requirements)
   - [Building from Source (Command Line)](#building-from-source-command-line)
-  - [Ubuntu / Debian Packaging (.deb)](#ubuntu--debian-packaging-deb)
+  - [Ubuntu / Debian Packaging & Deployment (.deb)](#ubuntu--debian-packaging--deployment-deb)
   - [Building with Qt Creator](#building-with-qt-creator)
   - [Windows Deployment & Packaging](#windows-deployment--packaging)
   - [Technical Highlights](#technical-highlights)
@@ -255,45 +255,141 @@ sudo cmake --install build
 
 ---
 
-### Ubuntu / Debian Packaging (.deb)
+### Ubuntu / Debian Packaging & Deployment (.deb)
 
-You can build a native Debian package (`.deb`) compatible with Ubuntu, Debian, Linux Mint, Pop!_OS, and other Debian-based operating systems. The packaging process automatically calculates all dynamic shared-library dependencies via `dpkg-shlibdeps`, integrates `.desktop` application menu launchers, system icons (`hicolor` and `pixmaps`), and command-line aliases (`lionvideo` and `LionVideo`).
+Lion Media Player provides first-class packaging for **Ubuntu**, **Debian**, **Linux Mint**, **Pop!_OS**, and all Debian-based distributions. The packaging pipeline utilizes **CMake CPack** with the native Debian generator (`CPackDeb`), integrated with `dpkg-shlibdeps` to automatically compute runtime dynamic library dependencies.
 
-#### Build the Package
-Run the packaging script or CMake target:
+#### 1. Packaging Architecture & Features
+- **Dynamic Dependency Discovery**: Automatically generates precise shared library dependencies (`libc6`, `libstdc++6`, `libqt6core6`, `libqt6gui6`, `libqt6multimedia6`, `libqt6widgets6`, etc.) tailored to your target distribution's package names and ABI versions.
+- **QPA Platform Guarantee**: Bundles explicit runtime dependencies on `qt6-qpa-plugins` and recommends `qt6-svg-plugins`, preventing "could not find Qt platform plugin" errors on minimal and headless installs.
+- **Standard Desktop Integration**:
+  - Main binary installed to `/usr/bin/LionVideo`
+  - Canonical lowercase CLI symlink at `/usr/bin/lionvideo`
+  - FreeDesktop `.desktop` entry in `/usr/share/applications/lionvideo.desktop` with full MIME type associations (MP4, MKV, WebM, AVI, FLAC, MP3, etc.)
+  - High-res icons installed to both `/usr/share/icons/hicolor/256x256/apps/lionvideo.png` and `/usr/share/pixmaps/lionvideo.png`
+- **Maintainer Scripts (`postinst` / `postrm`)**: Automatically refreshes the desktop launcher database (`update-desktop-database`), icon theme cache (`gtk-update-icon-cache`), and MIME database (`update-mime-database`) upon installation and removal.
+
+---
+
+#### 2. Prerequisites
+Ensure Debian packaging tools and development libraries are installed:
 ```bash
-# Method 1: Packaging helper script (configures, compiles, and packages)
-./scripts/build-deb.sh
-
-# Method 2: CMake target
-cmake --build build --target deb
-
-# Method 3: Direct CPack
-cd build && cpack -G DEB
+sudo apt update
+sudo apt install -y build-essential cmake ninja-build dpkg-dev
 ```
 
-The completed `.deb` package will be saved in:
+---
+
+#### 3. Building the Debian Package
+You can generate the `.deb` package using any of the following approaches:
+
+##### Option A: Dedicated Packaging Script (Recommended)
+The automated script handles CMake configuration, compiles the binary, invokes CPack, and copies the package to `dist/`:
+```bash
+./scripts/build-deb.sh
+```
+
+##### Option B: CMake / Ninja Build Target
+```bash
+# Configure if not already done
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+# Build the 'deb' target
+cmake --build build --target deb
+```
+
+##### Option C: Direct CPack
+```bash
+cd build
+cpack -G DEB
+```
+
+##### Option D: Zed Editor
+Open the command palette (`Ctrl + Shift + P`), type **`task: spawn`**, and select **`CMake: Package Debian (.deb)`**.
+
+---
+
+#### 4. Package Artifact
+The finalized package is placed in the `dist/` directory:
 ```bash
 dist/lionvideo_2.0.0_amd64.deb
 ```
 
-#### Install the Package
+##### Inspecting the Package
+You can inspect package metadata and file contents without installing:
 ```bash
-# Recommended: Install with APT (automatically resolves and downloads dependencies)
-sudo apt install ./dist/lionvideo_2.0.0_amd64.deb
+# View control headers, package dependencies, and descriptions
+dpkg-deb -I dist/lionvideo_2.0.0_amd64.deb
 
-# Alternative: Install with dpkg
+# View complete installed filesystem hierarchy
+dpkg-deb -c dist/lionvideo_2.0.0_amd64.deb
+
+# Extract package contents into a temporary directory
+dpkg-deb -x dist/lionvideo_2.0.0_amd64.deb /tmp/lionvideo-pkg
+```
+
+---
+
+#### 5. Deployment & Installation
+
+##### Recommended: Install via APT (Auto-resolves all dependencies)
+```bash
+sudo apt update
+sudo apt install ./dist/lionvideo_2.0.0_amd64.deb
+```
+
+##### Alternative: Install via dpkg
+```bash
 sudo dpkg -i dist/lionvideo_2.0.0_amd64.deb
+# If any missing runtime dependencies:
 sudo apt-get install -f
 ```
 
-#### Launch & Uninstall
-```bash
-# Launch from terminal or application launcher
-lionvideo
+##### GUI Installation
+Double-click `lionvideo_2.0.0_amd64.deb` in the Files file manager to open and install via **Ubuntu Software**, **GNOME Software**, or **GDebi**.
 
-# To uninstall
+---
+
+#### 6. Multimedia Codec Support Note
+Qt 6 Multimedia leverages the system's multimedia backends (FFmpeg / GStreamer). On Ubuntu 22.04 / 24.04 / 26.04, ensure common multimedia plugins are present for playback of proprietary and modern formats (H.264/AVC, H.265/HEVC, AAC, etc.):
+```bash
+sudo apt install -y \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav
+```
+
+---
+
+#### 7. Launching & Uninstallation
+
+##### Launching the Player
+```bash
+# From terminal:
+lionvideo
+# Or:
+LionVideo
+
+# Or with a video file:
+lionvideo ~/Videos/sample.mp4
+```
+You can also launch **Lion Media Player** directly from your application launcher / GNOME Dash.
+
+##### Upgrading
+To upgrade to a new release when a new `.deb` file is available:
+```bash
+sudo apt install ./dist/lionvideo_2.0.1_amd64.deb
+```
+
+##### Uninstallation
+```bash
+# Remove application (keeps system configuration)
 sudo apt remove lionvideo
+
+# Remove application along with all configurations
+sudo apt purge lionvideo
 ```
 
 ---
