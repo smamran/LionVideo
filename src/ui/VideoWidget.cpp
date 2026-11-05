@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QContextMenuEvent>
+#include <QWindow>
 
 namespace ui {
 
@@ -179,6 +180,15 @@ void VideoWidget::mouseMoveEvent(QMouseEvent *event) {
     emit mouseMoved();
     if (m_leftPressed && (event->buttons() & Qt::LeftButton)) {
         if (m_isPiP) {
+            if (window() && window()->windowHandle()) {
+                if (window()->windowHandle()->startSystemMove()) {
+                    m_leftPressed = false;
+                    m_isDragging = false;
+                    unsetCursor();
+                    event->accept();
+                    return;
+                }
+            }
             QPoint currentGlobal = event->globalPosition().toPoint();
             QPoint delta = currentGlobal - m_dragStartGlobalPos;
             if (!m_isDragging && delta.manhattanLength() >= 4) {

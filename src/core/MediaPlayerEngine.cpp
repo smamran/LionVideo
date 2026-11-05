@@ -176,8 +176,13 @@ void MediaPlayerEngine::toggleShuffle() {
 static bool isSameMedia(const QUrl &u1, const QUrl &u2) {
     if (u1 == u2) return true;
     if (u1.isLocalFile() && u2.isLocalFile()) {
+#if defined(Q_OS_WIN)
         QString p1 = QDir::cleanPath(u1.toLocalFile()).toLower();
         QString p2 = QDir::cleanPath(u2.toLocalFile()).toLower();
+#else
+        QString p1 = QDir::cleanPath(u1.toLocalFile());
+        QString p2 = QDir::cleanPath(u2.toLocalFile());
+#endif
         return p1 == p2;
     }
     return false;

@@ -192,16 +192,66 @@ c:\dev\LionVideo\
 
 | Dependency | Minimum Version | Recommended | Notes |
 | :--- | :--- | :--- | :--- |
-| **OS** | Windows 10 (64-bit) | Windows 11 (64-bit) | Linux & macOS compatible with minor adjustments |
+| **OS** | Windows 10 (64-bit) / Ubuntu 22.04+ | Windows 11 (64-bit) / Ubuntu 24.04 LTS | Cross-platform (Windows & Linux) |
 | **Compiler** | C++20 capable | LLVM Clang 17+ or GCC 11+ or MSVC 2022 | Must support C++20 standard |
 | **CMake** | 3.20 | 3.28+ | Build system generator |
-| **Build Tool** | Ninja 1.10+ | Ninja 1.12+ | High-speed parallel builds |
-| **Qt Framework** | Qt 6.5.0 | Qt 6.8+ or Qt 6.12+ | Modules: `Widgets`, `Multimedia`, `MultimediaWidgets`, `Svg` |
-| **Multimedia Backend** | FFmpeg | Built-in Qt FFmpeg plugin | Configured automatically via environment flags |
+| **Build Tool** | Ninja 1.10+ or Make | Ninja 1.12+ | High-speed parallel builds |
+| **Qt Framework** | Qt 6.2.0 | Qt 6.5+ or Qt 6.8+ | Modules: `Widgets`, `Multimedia`, `MultimediaWidgets`, `Svg` |
+| **Multimedia Backend** | FFmpeg / GStreamer | Built-in Qt backend | Configured automatically per platform |
 
 ---
 
-### Building from Source (Command Line)
+### Building on Ubuntu / Linux
+
+#### 1. Install System Dependencies
+Install compiler, CMake, and the required Qt 6 development libraries:
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential \
+    cmake \
+    ninja-build \
+    pkg-config \
+    libgl1-mesa-dev \
+    qt6-base-dev \
+    qt6-multimedia-dev \
+    libqt6svg6-dev
+```
+
+> [!NOTE]
+> On Ubuntu 22.04 LTS or 24.04 LTS, ensure multimedia codec plugins are available for media playback:
+> ```bash
+> sudo apt install -y \
+>     gstreamer1.0-plugins-base \
+>     gstreamer1.0-plugins-good \
+>     gstreamer1.0-plugins-bad \
+>     gstreamer1.0-plugins-ugly \
+>     gstreamer1.0-libav
+> ```
+
+#### 2. Configure & Build
+```bash
+# Generate build configuration
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+# Compile using all CPU cores
+cmake --build build -j$(nproc)
+```
+
+The compiled binary will be placed at:
+```bash
+./build/LionVideo
+```
+
+#### 3. (Optional) Install to System
+To install the application, desktop launcher entry, and icon:
+```bash
+sudo cmake --install build
+```
+
+---
+
+### Building on Windows (Command Line)
 
 #### 1. Open Terminal
 Open **PowerShell** or **Command Prompt** with the compiler environment initialized (e.g. LLVM MinGW or MSVC vcvars64).
@@ -238,6 +288,28 @@ build/LionVideo.exe
 3. Select your installed **Qt 6 Desktop Kit** (e.g. *Desktop Qt 6.12.0 LLVM-MinGW 64-bit*).
 4. Click **Configure Project**.
 5. Build and run using `Ctrl + R` or click the green **Run** button.
+
+---
+
+### Working with Zed Editor (Ubuntu & Windows)
+
+Lion Media Player is fully configured for [Zed Editor](https://zed.dev/) out of the box with relative cross-platform configuration:
+
+1. **Open the Project**:
+   - In Zed, select **File ➔ Open Folder...** and choose the `LionVideo` repository directory.
+2. **Language Server Intelligence (`clangd`)**:
+   - Autocomplete, definitions, refactoring, and inline diagnostics are powered by `clangd` via `.clangd` and `.zed/settings.json`.
+   - `compile_commands.json` is exported into `build/` automatically.
+3. **Running Tasks in Zed**:
+   - Press `Ctrl + Shift + P` (or `Cmd + Shift + P`), type **`task: spawn`** (or press `Ctrl + T`).
+   - Select from preconfigured tasks:
+     - **`CMake: Configure (Release)`** / **`CMake: Configure (Debug)`**
+     - **`CMake: Build`**
+     - **`CMake: Run`** (builds and launches the player on both Ubuntu and Windows)
+     - **`CMake: Clean`**
+4. **Zero-Configuration Qt Discovery**:
+   - **Ubuntu**: Uses default system Qt 6 packages (`/usr/lib/...`) automatically.
+   - **Windows**: Automatically detects installed Qt 6 (`C:/Programs/Qt/...` or `C:/Qt/...`) without requiring manual `-DCMAKE_PREFIX_PATH` arguments.
 
 ---
 

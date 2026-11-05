@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QAction>
+#include <QWindow>
 
 #if defined(Q_OS_WIN)
 #include <windows.h>
@@ -507,6 +508,24 @@ void MainWindow::onPlaybackStateChanged(QMediaPlayer::PlaybackState state) {
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if (event->type() == QEvent::MouseMove) {
         onUserInteraction();
+#if !defined(Q_OS_WIN)
+        if (!isMaximized() && !isFullScreen() && !m_isPiP) {
+            QPoint pos = mapFromGlobal(QCursor::pos());
+            int w = width();
+            int h = height();
+            const int b = 6;
+            bool left = (pos.x() >= 0 && pos.x() < b);
+            bool right = (pos.x() > w - b && pos.x() <= w);
+            bool top = (pos.y() >= 0 && pos.y() < b);
+            bool bottom = (pos.y() > h - b && pos.y() <= h);
+
+            if ((top && left) || (bottom && right)) setCursor(Qt::SizeFDiagCursor);
+            else if ((top && right) || (bottom && left)) setCursor(Qt::SizeBDiagCursor);
+            else if (left || right) setCursor(Qt::SizeHorCursor);
+            else if (top || bottom) setCursor(Qt::SizeVerCursor);
+            else unsetCursor();
+        }
+#endif
     } else if (event->type() == QEvent::KeyPress) {
         if (!QApplication::activeModalWidget() && !QApplication::activePopupWidget()) {
             auto *keyEvent = static_cast<QKeyEvent *>(event);
@@ -514,6 +533,29 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
                 return true;
             }
         }
+#if !defined(Q_OS_WIN)
+    } else if (event->type() == QEvent::MouseButtonPress) {
+        if (!isMaximized() && !isFullScreen() && !m_isPiP) {
+            auto *me = static_cast<QMouseEvent *>(event);
+            if (me->button() == Qt::LeftButton) {
+                QPoint pos = mapFromGlobal(QCursor::pos());
+                int w = width();
+                int h = height();
+                const int b = 6;
+                Qt::Edges edges = Qt::Edges();
+                if (pos.x() >= 0 && pos.x() < b) edges |= Qt::LeftEdge;
+                if (pos.x() > w - b && pos.x() <= w) edges |= Qt::RightEdge;
+                if (pos.y() >= 0 && pos.y() < b) edges |= Qt::TopEdge;
+                if (pos.y() > h - b && pos.y() <= h) edges |= Qt::BottomEdge;
+
+                if (edges != 0 && windowHandle()) {
+                    if (windowHandle()->startSystemResize(edges)) {
+                        return true;
+                    }
+                }
+            }
+        }
+#endif
     }
     return QMainWindow::eventFilter(watched, event);
 }

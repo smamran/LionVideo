@@ -2,6 +2,7 @@
 #include "../utils/IconHelper.h"
 #include <QMouseEvent>
 #include <QApplication>
+#include <QWindow>
 
 namespace ui {
 
@@ -126,6 +127,12 @@ void TitleBar::updateWindowState(bool isMaximized) {
 
 void TitleBar::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
+        if (window() && window()->windowHandle() && !window()->isMaximized()) {
+            if (window()->windowHandle()->startSystemMove()) {
+                event->accept();
+                return;
+            }
+        }
         m_isDragging = true;
         m_dragPosition = event->globalPosition().toPoint() - window()->frameGeometry().topLeft();
         event->accept();
@@ -140,6 +147,11 @@ void TitleBar::mouseMoveEvent(QMouseEvent *event) {
             // Restore from maximized while dragging
             double ratio = static_cast<double>(event->position().toPoint().x()) / static_cast<double>(width());
             window()->showNormal();
+            if (window()->windowHandle() && window()->windowHandle()->startSystemMove()) {
+                m_isDragging = false;
+                event->accept();
+                return;
+            }
             int newX = static_cast<int>(ratio * window()->width());
             m_dragPosition = QPoint(newX, event->position().toPoint().y());
         }

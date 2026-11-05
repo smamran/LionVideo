@@ -1,0 +1,22 @@
+{
+  "languages": {
+    "C++": {
+      "tab_size": 4,
+      "format_on_save": "on"
+    },
+    "CMake": {
+      "tab_size": 4
+    }
+  },
+  "lsp": {
+    "clangd": {
+      "arguments": [
+        "--background-index",
+        "--compile-commands-dir=build",
+        "--completion-style=detailed",
+        "--header-insertion=iwyu",
+        "--fallback-style=LLVM"
+      ]
+    }
+  }
+}

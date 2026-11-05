@@ -3,8 +3,14 @@
 #include "src/utils/IconHelper.h"
 
 int main(int argc, char *argv[]) {
-    // Retain and configure FFmpeg multimedia backend for optimal stability
+    // Multimedia backend configuration
+#if defined(Q_OS_WIN)
+    // On Windows, explicitly select FFmpeg backend for optimal stability
     qputenv("QT_MEDIA_BACKEND", "ffmpeg");
+#else
+    // On Linux/Ubuntu, let Qt select the available backend (e.g. GStreamer on Qt 6.2-6.4 or FFmpeg on Qt 6.5+)
+    // while honoring any user-specified QT_MEDIA_BACKEND override
+#endif
     qputenv("FFMPEG_OPT_hwaccel", "none");
     qputenv("FFMPEG_LOG_LEVEL", "quiet");
 
@@ -13,6 +19,7 @@ int main(int argc, char *argv[]) {
     app.setApplicationDisplayName("Lion Media Player");
     app.setOrganizationName("LionStudio");
     app.setApplicationVersion("2.0.0");
+    app.setDesktopFileName("lionvideo.desktop");
 
     // Set application and taskbar icon using provided branding
     app.setWindowIcon(utils::IconHelper::getAppIcon());

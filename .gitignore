@@ -1,9 +1,11 @@
 # Build directories
 build/
+build-*/
 deploy/
 dist/
 cmake-build-*/
 .cache/
+compile_commands.json
 
 # IDE files
 .idea/

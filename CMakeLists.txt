@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(LionVideo VERSION 2.0.0 LANGUAGES CXX RC)
+project(LionVideo VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,11 +7,39 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Default build type to Release on single-configuration generators (Linux/GCC/Clang)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+endif()
 
 # Compiler optimization flags
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -ffunction-sections -fdata-sections")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections")
+    if(NOT APPLE)
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+    endif()
+endif()
+
+# Auto-detect Qt6 installation on Windows if not already specified
+if(WIN32 AND NOT CMAKE_PREFIX_PATH AND NOT DEFINED ENV{CMAKE_PREFIX_PATH} AND NOT DEFINED ENV{QTDIR})
+    file(GLOB _qt_candidate_dirs
+        "C:/Programs/Qt/6.*/llvm-mingw_64"
+        "C:/Programs/Qt/6.*/mingw_64"
+        "C:/Programs/Qt/6.*/msvc2022_64"
+        "C:/Qt/6.*/llvm-mingw_64"
+        "C:/Qt/6.*/mingw_64"
+        "C:/Qt/6.*/msvc2022_64"
+        "D:/Programs/Qt/6.*/llvm-mingw_64"
+        "D:/Qt/6.*/llvm-mingw_64"
+    )
+    if(_qt_candidate_dirs)
+        list(SORT _qt_candidate_dirs ORDER DESCENDING)
+        list(GET _qt_candidate_dirs 0 _detected_qt)
+        list(PREPEND CMAKE_PREFIX_PATH "${_detected_qt}")
+        message(STATUS "Auto-detected Windows Qt6: ${_detected_qt}")
+    endif()
 endif()
 
 # Find required Qt6 packages
@@ -59,11 +87,13 @@ set(RESOURCES
     resources/resources.qrc
 )
 
-set(WIN_RESOURCE
-    resources/app.rc
-)
+# Windows-specific resources and settings
+if(WIN32)
+    enable_language(RC)
+    set(WIN_RESOURCE resources/app.rc)
+endif()
 
-add_executable(LionVideo WIN32
+add_executable(LionVideo
     main.cpp
     ${CORE_SOURCES}
     ${UI_SOURCES}
@@ -71,6 +101,10 @@ add_executable(LionVideo WIN32
     ${RESOURCES}
     ${WIN_RESOURCE}
 )
+
+if(WIN32)
+    set_target_properties(LionVideo PROPERTIES WIN32_EXECUTABLE ON)
+endif()
 
 target_include_directories(LionVideo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -91,3 +125,28 @@ if(WIN32)
         shell32
     )
 endif()
+
+# Linux / Unix installation rules and desktop integration
+include(GNUInstallDirs)
+install(TARGETS LionVideo
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+if(UNIX AND NOT APPLE)
+    install(FILES resources/lionvideo.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+    )
+    install(FILES resources/player.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
+        RENAME lionvideo.png
+    )
+endif()
+
+# Convenience target to run the executable cross-platform
+add_custom_target(run
+    COMMAND $<TARGET_FILE:LionVideo>
+    DEPENDS LionVideo
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Launching LionVideo..."
+)

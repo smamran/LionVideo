@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Lion Media Player
+Comment=High-performance modern media player built with Qt 6 and C++20
+Exec=LionVideo %U
+Icon=lionvideo
+Terminal=false
+Categories=AudioVideo;Player;Video;Audio;Qt;
+MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/mpeg;audio/mpeg;audio/ogg;audio/wav;audio/flac;audio/aac;audio/x-m4a;
+StartupWMClass=LionVideo
