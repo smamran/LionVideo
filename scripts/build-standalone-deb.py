@@ -35,24 +35,18 @@ EXCLUDE_LIBS = {
     "libresolv.so.2",
     "libgcc_s.so.1",
     "libstdc++.so.6",
-    # Host Graphics & Display Drivers (must talk to host GPU / X11 / Wayland server)
-    "libGL.so.1",
-    "libGLX.so.0",
-    "libOpenGL.so.0",
-    "libEGL.so.1",
-    "libGLdispatch.so.0",
-    "libdrm.so.2",
+    # Host X11 socket client libraries
     "libX11.so.6",
     "libX11-xcb.so.1",
     "libxcb.so.1",
     "libXau.so.6",
     "libXdmcp.so.6",
-    # Audio server interface
-    "libasound.so.2",
-    "libpulse.so.0",
-    # System core
+    "libdrm.so.2",
+    # Host init & session bus
     "libsystemd.so.0",
     "libudev.so.1",
+    "libasound.so.2",
+    "libpulse.so.0",
 }
 
 def run_cmd(cmd, cwd=ROOT_DIR):
@@ -70,7 +64,7 @@ def scan_dependencies(file_path):
                 if name in EXCLUDE_LIBS:
                     continue
                 if any(name.startswith(prefix) for prefix in [
-                    "libc.so", "libm.so", "libpthread.so", "libdl.so", "libGL",
+                    "libc.so", "libm.so", "libpthread.so", "libdl.so",
                     "libdrm", "libX11", "libxcb", "ld-linux"
                 ]):
                     continue
@@ -222,14 +216,16 @@ Version: {VERSION}
 Architecture: {ARCH}
 Maintainer: LionVideo Project <info@lionvideo.org>
 Installed-Size: {installed_size_kb}
-Depends: libc6 (>= 2.34), libstdc++6 (>= 5.2), libgl1, libglx0, libopengl0
+Depends: libc6 (>= 2.34)
+Recommends: libgl1, libegl1, libpulse0
 Section: video
 Priority: optional
 Homepage: https://github.com/smamran/LionVideo
-Description: High-performance standalone media player built with Qt 6 and C++20
+Description: Standalone high-performance media player built with Qt 6 and C++20
  Lion Media Player is a modern, fast desktop media player.
- This package is fully self-contained with bundled Qt 6 and multimedia
- libraries in /opt/lionvideo, requiring zero external Qt packages from APT.
+ This package is fully self-contained with bundled Qt 6, OpenGL dispatchers,
+ and multimedia libraries in /opt/lionvideo. It installs cleanly with sudo dpkg -i
+ with zero external Qt or OpenGL package dependencies required from APT.
 """
     with open(os.path.join(debian_dir, "control"), "w", encoding="utf-8") as f:
         f.write(control_content)
