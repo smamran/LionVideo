@@ -65,7 +65,7 @@ def scan_dependencies(file_path):
                     continue
                 if any(name.startswith(prefix) for prefix in [
                     "libc.so", "libm.so", "libpthread.so", "libdl.so",
-                    "libdrm", "libX11", "libxcb", "ld-linux"
+                    "libdrm", "ld-linux"
                 ]):
                     continue
                 if os.path.exists(path):
