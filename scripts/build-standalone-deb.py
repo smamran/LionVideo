@@ -138,6 +138,10 @@ fi
 export LD_LIBRARY_PATH="${APP_DIR}/lib:${LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="${APP_DIR}/plugins"
 
+if [ -n "$DISPLAY" ] && [ -z "$QT_QPA_PLATFORM" ]; then
+    export QT_QPA_PLATFORM="xcb"
+fi
+
 exec "${APP_DIR}/bin/LionVideo" "$@"
 """)
     os.chmod(launcher_script_path, 0o755)

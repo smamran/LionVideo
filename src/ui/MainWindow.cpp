@@ -16,6 +16,79 @@
 #if defined(Q_OS_WIN)
 #include <windows.h>
 #include <windowsx.h>
+#else
+#include <dlfcn.h>
+#include <cstring>
+
+static void setLinuxWindowAlwaysOnTop(WId winId, bool onTop) {
+    void *x11 = dlopen("libX11.so.6", RTLD_LAZY);
+    if (!x11) return;
+
+    typedef void Display;
+    typedef unsigned long XID;
+    typedef XID Window;
+    typedef XID Atom;
+    typedef int Bool;
+    typedef int Status;
+
+    struct XClientMessageEvent {
+        int type;
+        unsigned long serial;
+        Bool send_event;
+        Display *display;
+        Window window;
+        Atom message_type;
+        int format;
+        long data[5];
+    };
+
+    union XEvent {
+        int type;
+        XClientMessageEvent xclient;
+        long pad[24];
+    };
+
+    typedef Display* (*FnXOpenDisplay)(const char*);
+    typedef Atom (*FnXInternAtom)(Display*, const char*, Bool);
+    typedef Window (*FnXDefaultRootWindow)(Display*);
+    typedef Status (*FnXSendEvent)(Display*, Window, Bool, long, XEvent*);
+    typedef int (*FnXFlush)(Display*);
+    typedef int (*FnXCloseDisplay)(Display*);
+
+    auto fnOpen = (FnXOpenDisplay)dlsym(x11, "XOpenDisplay");
+    auto fnIntern = (FnXInternAtom)dlsym(x11, "XInternAtom");
+    auto fnRoot = (FnXDefaultRootWindow)dlsym(x11, "XDefaultRootWindow");
+    auto fnSend = (FnXSendEvent)dlsym(x11, "XSendEvent");
+    auto fnFlush = (FnXFlush)dlsym(x11, "XFlush");
+    auto fnClose = (FnXCloseDisplay)dlsym(x11, "XCloseDisplay");
+
+    if (fnOpen && fnIntern && fnRoot && fnSend && fnFlush && fnClose) {
+        Display *dpy = fnOpen(nullptr);
+        if (dpy) {
+            Atom netWmState = fnIntern(dpy, "_NET_WM_STATE", 0);
+            Atom netWmStateAbove = fnIntern(dpy, "_NET_WM_STATE_ABOVE", 0);
+            Atom netWmStateStaysOnTop = fnIntern(dpy, "_NET_WM_STATE_STAYS_ON_TOP", 0);
+            Window root = fnRoot(dpy);
+
+            XEvent xev;
+            std::memset(&xev, 0, sizeof(xev));
+            xev.type = 33; // ClientMessage
+            xev.xclient.window = (Window)winId;
+            xev.xclient.message_type = netWmState;
+            xev.xclient.format = 32;
+            xev.xclient.data[0] = onTop ? 1 : 0; // 1 = _NET_WM_STATE_ADD, 0 = _NET_WM_STATE_REMOVE
+            xev.xclient.data[1] = netWmStateAbove;
+            xev.xclient.data[2] = netWmStateStaysOnTop;
+            xev.xclient.data[3] = 1; // source: normal application
+
+            long mask = (1L << 20) | (1L << 19); // SubstructureRedirectMask | SubstructureNotifyMask
+            fnSend(dpy, root, 0, mask, &xev);
+            fnFlush(dpy);
+            fnClose(dpy);
+        }
+    }
+    dlclose(x11);
+}
 #endif
 
 namespace ui {
@@ -351,11 +424,7 @@ void MainWindow::togglePiP() {
             togglePlaylistDrawer();
         }
         m_titleBar->hide();
-#if defined(Q_OS_WIN)
         setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-#else
-        setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
-#endif
         setMinimumSize(320, 180);
         resize(420, 236);
         show();
@@ -364,6 +433,9 @@ void MainWindow::togglePiP() {
         if (windowHandle()) {
             windowHandle()->setFlag(Qt::WindowStaysOnTopHint, true);
         }
+#if !defined(Q_OS_WIN)
+        setLinuxWindowAlwaysOnTop(winId(), true);
+#endif
         m_osdLabel->showNotification("Picture-in-Picture: On", utils::IconHelper::pipIcon());
     } else {
         setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
@@ -378,6 +450,9 @@ void MainWindow::togglePiP() {
         if (windowHandle()) {
             windowHandle()->setFlag(Qt::WindowStaysOnTopHint, false);
         }
+#if !defined(Q_OS_WIN)
+        setLinuxWindowAlwaysOnTop(winId(), false);
+#endif
         m_osdLabel->showNotification("Picture-in-Picture: Off", utils::IconHelper::pipIcon());
     }
 

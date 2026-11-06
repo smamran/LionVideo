@@ -12,11 +12,11 @@ int main(int argc, char *argv[]) {
     // while honoring any user-specified QT_MEDIA_BACKEND override
 
     // Prefer X11/XWayland (xcb) by default on Linux when an X display is available,
-    // with automatic Wayland fallback, ensuring Picture-in-Picture "Always on Top"
-    // is honored by GNOME Mutter while guaranteeing fallback if Xwayland is absent.
+    // ensuring Picture-in-Picture "Always on Top" (Qt::WindowStaysOnTopHint / _NET_WM_STATE_ABOVE)
+    // is fully honored by GNOME Mutter and X11 compositors.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
         if (!qEnvironmentVariableIsEmpty("DISPLAY")) {
-            qputenv("QT_QPA_PLATFORM", "xcb;wayland");
+            qputenv("QT_QPA_PLATFORM", "xcb");
         }
     }
 #endif
