@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     app.setApplicationDisplayName("Lion Media Player");
     app.setOrganizationName("LionStudio");
     app.setApplicationVersion("2.0.0");
-    app.setDesktopFileName("lionvideo.desktop");
+    app.setDesktopFileName("lionvideo");
 
     // Set application and taskbar icon using provided branding
     app.setWindowIcon(utils::IconHelper::getAppIcon());
