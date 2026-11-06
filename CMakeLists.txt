@@ -180,8 +180,12 @@ set(CPACK_DEBIAN_PACKAGE_MAINTAINER "LionVideo Project <info@lionvideo.org>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "video")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins")
+# Use portable dependencies (Qt >= 6.2.0) compatible across Ubuntu 22.04 LTS, 24.04 LTS, 24.10, and 26.04
+# avoids dpkg-shlibdeps locking dependencies to host build machine versions (e.g. Qt >= 6.10.2)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "libc6 (>= 2.34), libgcc-s1 (>= 3.0), libstdc++6 (>= 5.2), libglx0, libopengl0, libqt6core6t64 (>= 6.2.0) | libqt6core6 (>= 6.2.0), libqt6gui6 (>= 6.2.0), libqt6widgets6 (>= 6.2.0), libqt6multimedia6 (>= 6.2.0), libqt6multimediawidgets6 (>= 6.2.0), libqt6network6 (>= 6.2.0), libqt6svg6 (>= 6.2.0), qt6-qpa-plugins"
+)
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-svg-plugins")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
