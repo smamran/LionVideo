@@ -12,7 +12,7 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 
 | Asset | Platform / OS | Type | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- |
-| **[`lionvideo_2.0.0_amd64.deb`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/lionvideo_2.0.0_amd64.deb)** | Ubuntu / Debian (x86_64) | Debian Package | 486 KB | `8B41A2A9E4945BD0DCAB6D41E64AE34233E218C374FF5ADB98837F6E863A355E` |
+| **[`lionvideo_2.0.0_amd64.deb`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/lionvideo_2.0.0_amd64.deb)** | Ubuntu / Debian (x86_64) | Standalone Debian Package | 74.04 MB | `E2501FF644D7EA491CE67984D0D87A84347123812D8B6EDC8B66768906B1EC78` |
 | **[`LionVideo-2.0.0-Setup.exe`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-Setup.exe)** | Windows 10 / 11 (x64) | Single-File Installer | 17.97 MB | `55A5356B8D474794B6E5FF326869D82A02AF8917B90172106AA0F49BC31F2381` |
 | **[`LionVideo-2.0.0-windows-x64-portable.zip`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-windows-x64-portable.zip)** | Windows 10 / 11 (x64) | Portable Archive | 22.31 MB | `4E3255BE4BDEB16550AD2041D444C46A61EBF80D0CC17E196526E3EF0FF68A6F` |
 
@@ -20,12 +20,14 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 
 ## 🚀 Getting Started
 
-- **Ubuntu / Debian (`.deb`)**:
-  Download `lionvideo_2.0.0_amd64.deb` and install via APT to automatically resolve dependencies:
+- **Ubuntu / Debian (`.deb` - Fully Self-Contained)**:
+  Download `lionvideo_2.0.0_amd64.deb`. Because all Qt 6 and multimedia libraries are bundled directly inside the package, it installs seamlessly on fresh systems with **zero missing Qt dependency errors**:
   ```bash
   sudo apt install ./lionvideo_2.0.0_amd64.deb
+  # or:
+  sudo dpkg -i lionvideo_2.0.0_amd64.deb
   ```
-  Launches with `lionvideo` from the terminal or via the **Lion Media Player** icon in your desktop app launcher.
+  Launches with `lionvideo` from the terminal or via the **Lion Media Player** desktop icon.
 
 - **Windows Installer (`Setup.exe`)**:
   Run `LionVideo-2.0.0-Setup.exe` to install to your system with desktop and Start Menu shortcuts (per-user or all-users, no admin privileges required).
@@ -286,14 +288,15 @@ sudo cmake --install build
 
 ### Ubuntu / Debian Packaging & Deployment (.deb)
 
-Lion Media Player provides first-class packaging for **Ubuntu**, **Debian**, **Linux Mint**, **Pop!_OS**, and all Debian-based distributions. The packaging pipeline utilizes **CMake CPack** with the native Debian generator (`CPackDeb`), integrated with `dpkg-shlibdeps` to automatically compute runtime dynamic library dependencies.
+Lion Media Player provides first-class packaging for **Ubuntu**, **Debian**, **Linux Mint**, **Pop!_OS**, and all Debian-based distributions. By default, the build script generates a **self-contained standalone package** with all runtime dependencies (Qt 6, multimedia plugins, and libraries) bundled inside `/opt/lionvideo/`.
 
 #### 1. Packaging Architecture & Features
-- **Dynamic Dependency Discovery**: Automatically generates precise shared library dependencies (`libc6`, `libstdc++6`, `libqt6core6`, `libqt6gui6`, `libqt6multimedia6`, `libqt6widgets6`, etc.) tailored to your target distribution's package names and ABI versions.
-- **QPA Platform Guarantee**: Bundles explicit runtime dependencies on `qt6-qpa-plugins` and recommends `qt6-svg-plugins`, preventing "could not find Qt platform plugin" errors on minimal and headless installs.
+- **All-in-One Standalone Portability**: Bundles Qt 6 Core, Gui, Widgets, Multimedia, Svg, Network, DBus, and all plugins (`platforms`, `multimedia`, `imageformats`, `iconengines`, `tls`, `xcbglintegrations`, `wayland`) directly into `/opt/lionvideo/lib` and `/opt/lionvideo/plugins`.
+- **Zero Dependency Headaches**: Does **not** require any Qt packages to be installed on the target machine. Only requires baseline system runtime (`libc6`, `libstdc++6`, `libgl1`, `libglx0`, `libopengl0`).
 - **Standard Desktop Integration**:
-  - Main binary installed to `/usr/bin/LionVideo`
-  - Canonical lowercase CLI symlink at `/usr/bin/lionvideo`
+  - Binary installed to `/opt/lionvideo/bin/LionVideo`
+  - Automated launcher wrapper at `/opt/lionvideo/bin/lionvideo`
+  - System CLI symlinks: `/usr/bin/lionvideo` and `/usr/bin/LionVideo`
   - FreeDesktop `.desktop` entry in `/usr/share/applications/lionvideo.desktop` with full MIME type associations (MP4, MKV, WebM, AVI, FLAC, MP3, etc.)
   - High-res icons installed to both `/usr/share/icons/hicolor/256x256/apps/lionvideo.png` and `/usr/share/pixmaps/lionvideo.png`
 - **Maintainer Scripts (`postinst` / `postrm`)**: Automatically refreshes the desktop launcher database (`update-desktop-database`), icon theme cache (`gtk-update-icon-cache`), and MIME database (`update-mime-database`) upon installation and removal.
