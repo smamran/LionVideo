@@ -12,7 +12,7 @@ A modern, fast, hardware-accelerated desktop media player crafted in **C++20** a
 
 | Asset | Platform / OS | Type | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- |
-| **[`lionvideo_2.0.0_amd64.deb`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/lionvideo_2.0.0_amd64.deb)** | Ubuntu / Debian (x86_64) | Standalone Debian Package | 74.22 MB | `7FD9B2FD553A87174CA80F3FF720B4C4687D132DC3E32063C9B575155D7BE360` |
+| **[`lionvideo_2.0.0_amd64.deb`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/lionvideo_2.0.0_amd64.deb)** | Ubuntu / Debian (x86_64) | Standalone Debian Package | 79.04 MB | `0B3A5ABE5D314DC34193DBF8E3F927C060BA35B546E763B75F3D80038663370A` |
 | **[`LionVideo-2.0.0-Setup.exe`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-Setup.exe)** | Windows 10 / 11 (x64) | Single-File Installer | 17.97 MB | `55A5356B8D474794B6E5FF326869D82A02AF8917B90172106AA0F49BC31F2381` |
 | **[`LionVideo-2.0.0-windows-x64-portable.zip`](https://github.com/smamran/LionVideo/releases/download/v2.0.0/LionVideo-2.0.0-windows-x64-portable.zip)** | Windows 10 / 11 (x64) | Portable Archive | 22.31 MB | `4E3255BE4BDEB16550AD2041D444C46A61EBF80D0CC17E196526E3EF0FF68A6F` |
 

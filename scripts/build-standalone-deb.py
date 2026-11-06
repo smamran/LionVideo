@@ -109,23 +109,34 @@ def main():
     for d in [bin_dir, lib_dir, plugins_dir, debian_dir, usr_bin, usr_apps, usr_icons, usr_pixmaps]:
         os.makedirs(d, exist_ok=True)
 
-    # 3. Copy LionVideo Binary & Launcher Script
+    # 3. Copy LionVideo Binary, qt.conf & Launcher Script
     print("📦 Installing application files...")
     shutil.copy2(binary_src, os.path.join(bin_dir, "LionVideo"))
     os.chmod(os.path.join(bin_dir, "LionVideo"), 0o755)
+
+    # Standard qt.conf for relative asset discovery
+    qt_conf_path = os.path.join(bin_dir, "qt.conf")
+    with open(qt_conf_path, "w", encoding="utf-8") as f:
+        f.write("""[Paths]
+Prefix = ..
+Plugins = plugins
+Libraries = lib
+""")
 
     launcher_script_path = os.path.join(bin_dir, "lionvideo")
     with open(launcher_script_path, "w", encoding="utf-8") as f:
         f.write("""#!/bin/sh
 # Lion Media Player - Standalone Launcher Wrapper
-# Automatically routes Qt to bundled libraries and plugins in /opt/lionvideo
+# Resolves canonical installation directory even when invoked through symlinks (/usr/bin/lionvideo)
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+APP_DIR="/opt/lionvideo"
+if [ ! -d "$APP_DIR" ]; then
+    REAL_SCRIPT="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
+    APP_DIR="$(cd "$(dirname "$REAL_SCRIPT")/.." && pwd)"
+fi
 
 export LD_LIBRARY_PATH="${APP_DIR}/lib:${LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="${APP_DIR}/plugins"
-export QT_QPA_PLATFORM_PLUGIN_PATH="${APP_DIR}/plugins/platforms"
 
 exec "${APP_DIR}/bin/LionVideo" "$@"
 """)
@@ -133,23 +144,14 @@ exec "${APP_DIR}/bin/LionVideo" "$@"
 
     # 4. Copy Qt Plugins
     print("🧩 Bundling Qt 6 plugins...")
-    qt_plugin_dirs = [
-        "platforms",
-        "multimedia",
-        "imageformats",
-        "iconengines",
-        "tls",
-        "xcbglintegrations",
-        "wayland-shell-integration",
-        "wayland-decoration-client",
-        "wayland-graphics-integration-client",
-    ]
     qt_base_plugin = "/usr/lib/x86_64-linux-gnu/qt6/plugins"
-    for pdir in qt_plugin_dirs:
-        src_p = os.path.join(qt_base_plugin, pdir)
-        if os.path.exists(src_p):
-            dst_p = os.path.join(plugins_dir, pdir)
-            shutil.copytree(src_p, dst_p)
+    if os.path.exists(qt_base_plugin):
+        for item in sorted(os.listdir(qt_base_plugin)):
+            src_p = os.path.join(qt_base_plugin, item)
+            if os.path.isdir(src_p):
+                dst_p = os.path.join(plugins_dir, item)
+                if not os.path.exists(dst_p):
+                    shutil.copytree(src_p, dst_p)
 
     # 5. Collect and bundle all required shared libraries
     print("📚 Bundling shared libraries into /opt/lionvideo/lib/...")
