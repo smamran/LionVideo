@@ -6,6 +6,7 @@
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QTimer>
+#include <QIcon>
 
 namespace ui {
 
