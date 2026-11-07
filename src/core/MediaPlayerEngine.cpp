@@ -1,6 +1,8 @@
 #include "MediaPlayerEngine.h"
 #include <QFileInfo>
 #include <QDir>
+#include <QMediaDevices>
+#include <QAudioDevice>
 #include <algorithm>
 #include <random>
 
@@ -9,7 +11,8 @@ namespace core {
 MediaPlayerEngine::MediaPlayerEngine(QObject *parent)
     : QObject(parent),
       m_player(new QMediaPlayer(this)),
-      m_audioOutput(new QAudioOutput(this)) {
+      m_audioOutput(new QAudioOutput(this)),
+      m_mediaDevices(new QMediaDevices(this)) {
     m_player->setAudioOutput(m_audioOutput);
     m_audioOutput->setVolume(0.7f);
     m_lastVolume = 70;
@@ -19,6 +22,10 @@ MediaPlayerEngine::MediaPlayerEngine(QObject *parent)
     connect(m_player, &QMediaPlayer::playbackStateChanged, this, &MediaPlayerEngine::playbackStateChanged);
     connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &MediaPlayerEngine::onMediaStatusChanged);
     connect(m_player, &QMediaPlayer::errorOccurred, this, &MediaPlayerEngine::onPlayerError);
+
+    // Watch for host/system audio device changes (e.g. VMware virtual sound card resets,
+    // host audio switch, or sleep/wake) to automatically recover audio output
+    connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, &MediaPlayerEngine::recoverAudioOutput);
 }
 
 void MediaPlayerEngine::setVideoOutput(QObject *videoOutput) {
@@ -29,6 +36,9 @@ void MediaPlayerEngine::play() {
     if (m_currentIndex < 0 && !m_playlist.isEmpty()) {
         playIndex(0);
         return;
+    }
+    if (m_audioOutput && m_audioOutput->device().isNull()) {
+        recoverAudioOutput();
     }
     m_player->play();
 }
@@ -94,10 +104,15 @@ void MediaPlayerEngine::seekRelative(qint64 deltaMs) {
 void MediaPlayerEngine::setVolume(int volumePercent) {
     int clamped = std::clamp(volumePercent, 0, 100);
     m_lastVolume = clamped;
-    m_audioOutput->setVolume(static_cast<float>(clamped) / 100.0f);
-    if (clamped > 0 && m_audioOutput->isMuted()) {
-        m_audioOutput->setMuted(false);
-        emit mutedChanged(false);
+    if (m_audioOutput) {
+        if (m_audioOutput->device().isNull()) {
+            recoverAudioOutput();
+        }
+        m_audioOutput->setVolume(static_cast<float>(clamped) / 100.0f);
+        if (clamped > 0 && m_audioOutput->isMuted()) {
+            m_audioOutput->setMuted(false);
+            emit mutedChanged(false);
+        }
     }
     emit volumeChanged(clamped);
 }
@@ -107,7 +122,12 @@ int MediaPlayerEngine::volume() const {
 }
 
 void MediaPlayerEngine::setMuted(bool muted) {
-    m_audioOutput->setMuted(muted);
+    if (m_audioOutput) {
+        if (!muted && m_audioOutput->device().isNull()) {
+            recoverAudioOutput();
+        }
+        m_audioOutput->setMuted(muted);
+    }
     emit mutedChanged(muted);
 }
 
@@ -278,6 +298,13 @@ void MediaPlayerEngine::playIndex(int index) {
     m_currentIndex = index;
     const auto &item = m_playlist.at(m_currentIndex);
 
+    // Explicitly stop active pipeline before switching source.
+    // In GStreamer under virtualized environments (VMware), changing source during PLAYING state
+    // can cause pulsesink thread deadlocks or detached audio sinks.
+    if (m_player->playbackState() == QMediaPlayer::PlayingState) {
+        m_player->stop();
+    }
+
     m_player->setSource(item.url);
     m_player->play();
 
@@ -371,9 +398,29 @@ void MediaPlayerEngine::onDurationChanged(qint64 durationMs) {
 }
 
 void MediaPlayerEngine::onPlayerError(QMediaPlayer::Error error, const QString &errorString) {
+    if (error == QMediaPlayer::ResourceError) {
+        // Automatically attempt audio sink recovery if audio device or GStreamer sink dropped
+        recoverAudioOutput();
+    }
     if (error != QMediaPlayer::NoError) {
         emit mediaError(errorString);
     }
+}
+
+void MediaPlayerEngine::recoverAudioOutput() {
+    if (!m_audioOutput) return;
+
+    QAudioDevice defDev = QMediaDevices::defaultAudioOutput();
+    if (!defDev.isNull() && m_audioOutput->device() != defDev) {
+        m_audioOutput->setDevice(defDev);
+    }
+
+    // Reset GStreamer audio sink attachment to recover from pipeline underrun or stall
+    m_player->setAudioOutput(nullptr);
+    m_player->setAudioOutput(m_audioOutput);
+
+    // Restore volume and mute state
+    m_audioOutput->setVolume(static_cast<float>(m_lastVolume) / 100.0f);
 }
 
 void MediaPlayerEngine::rebuildShuffleList() {

@@ -138,6 +138,11 @@ fi
 export LD_LIBRARY_PATH="${APP_DIR}/lib:${LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="${APP_DIR}/plugins"
 
+# Increase PulseAudio buffer latency to prevent underruns/dropouts in virtual machines (VMware/VirtualBox)
+if [ -z "$PULSE_LATENCY_MSEC" ]; then
+    export PULSE_LATENCY_MSEC="60"
+fi
+
 if [ -n "$DISPLAY" ] && [ -z "$QT_QPA_PLATFORM" ]; then
     export QT_QPA_PLATFORM="xcb"
 fi

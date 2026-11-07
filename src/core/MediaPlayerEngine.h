@@ -7,6 +7,8 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 
+class QMediaDevices;
+
 namespace core {
 
 struct PlaylistItem {
@@ -97,9 +99,11 @@ private:
     void rebuildShuffleList();
     int getNextIndex() const;
     int getPreviousIndex() const;
+    void recoverAudioOutput();
 
     QMediaPlayer *m_player = nullptr;
     QAudioOutput *m_audioOutput = nullptr;
+    QMediaDevices *m_mediaDevices = nullptr;
 
     QList<PlaylistItem> m_playlist;
     QList<int> m_shuffledOrder;

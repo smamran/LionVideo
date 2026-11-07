@@ -14,6 +14,13 @@ int main(int argc, char *argv[]) {
     // On Linux/Ubuntu, let Qt select the available backend (e.g. GStreamer on Qt 6.2-6.4 or FFmpeg on Qt 6.5+)
     // while honoring any user-specified QT_MEDIA_BACKEND override
 
+    // Increase PulseAudio buffer latency to 60ms by default on Linux if not set.
+    // In virtualized environments (VMware, VirtualBox, WSL2), default low latency (10-20ms)
+    // causes timer-based scheduling underruns and intermittent audio sink stalls/dropouts.
+    if (qEnvironmentVariableIsEmpty("PULSE_LATENCY_MSEC")) {
+        qputenv("PULSE_LATENCY_MSEC", "60");
+    }
+
     // Prefer X11/XWayland (xcb) by default on Linux when an X display is available,
     // ensuring Picture-in-Picture "Always on Top" (Qt::WindowStaysOnTopHint / _NET_WM_STATE_ABOVE)
     // is fully honored by GNOME Mutter and X11 compositors.
