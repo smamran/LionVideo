@@ -20,6 +20,9 @@ public:
     void showNotification(const QString &text, const QIcon &icon = QIcon(), int durationMs = 1500);
     void reposition(const QSize &parentSize);
 
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
 private slots:
     void startFadeOut();
 

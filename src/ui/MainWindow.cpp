@@ -16,9 +16,67 @@
 #if defined(Q_OS_WIN)
 #include <windows.h>
 #include <windowsx.h>
+
+static void setWindowsWindowDarkTheme(WId winId) {
+    HMODULE dwmapi = LoadLibraryA("dwmapi.dll");
+    if (!dwmapi) return;
+
+    typedef HRESULT (WINAPI *FnDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+    auto fnDwmSetWindowAttribute = (FnDwmSetWindowAttribute)GetProcAddress(dwmapi, "DwmSetWindowAttribute");
+    if (fnDwmSetWindowAttribute) {
+        HWND hwnd = reinterpret_cast<HWND>(winId);
+        if (hwnd) {
+            BOOL darkMode = TRUE;
+            // DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 20H1+ and Windows 11)
+            // DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19 (Windows 10 1809/1903/1909)
+            if (FAILED(fnDwmSetWindowAttribute(hwnd, 20, &darkMode, sizeof(darkMode)))) {
+                fnDwmSetWindowAttribute(hwnd, 19, &darkMode, sizeof(darkMode));
+            }
+        }
+    }
+    FreeLibrary(dwmapi);
+}
 #else
 #include <dlfcn.h>
 #include <cstring>
+
+static void setLinuxWindowDarkThemeVariant(WId winId) {
+    void *x11 = dlopen("libX11.so.6", RTLD_LAZY);
+    if (!x11) return;
+
+    typedef void Display;
+    typedef unsigned long XID;
+    typedef XID Window;
+    typedef XID Atom;
+    typedef int Bool;
+
+    typedef Display* (*FnXOpenDisplay)(const char*);
+    typedef Atom (*FnXInternAtom)(Display*, const char*, Bool);
+    typedef int (*FnXChangeProperty)(Display*, Window, Atom, Atom, int, int, const unsigned char*, int);
+    typedef int (*FnXFlush)(Display*);
+    typedef int (*FnXCloseDisplay)(Display*);
+
+    auto fnOpen = (FnXOpenDisplay)dlsym(x11, "XOpenDisplay");
+    auto fnIntern = (FnXInternAtom)dlsym(x11, "XInternAtom");
+    auto fnChangeProperty = (FnXChangeProperty)dlsym(x11, "XChangeProperty");
+    auto fnFlush = (FnXFlush)dlsym(x11, "XFlush");
+    auto fnClose = (FnXCloseDisplay)dlsym(x11, "XCloseDisplay");
+
+    if (fnOpen && fnIntern && fnChangeProperty && fnFlush && fnClose) {
+        Display *dpy = fnOpen(nullptr);
+        if (dpy) {
+            Atom themeVariantAtom = fnIntern(dpy, "_GTK_THEME_VARIANT", 0);
+            Atom xaString = 31; // XA_STRING
+            const char *darkVariant = "dark";
+            fnChangeProperty(dpy, (Window)winId, themeVariantAtom, xaString, 8, 0 /* PropModeReplace */,
+                             reinterpret_cast<const unsigned char*>(darkVariant),
+                             static_cast<int>(std::strlen(darkVariant)));
+            fnFlush(dpy);
+            fnClose(dpy);
+        }
+    }
+    dlclose(x11);
+}
 
 static void setLinuxWindowAlwaysOnTop(WId winId, bool onTop) {
     void *x11 = dlopen("libX11.so.6", RTLD_LAZY);
@@ -115,6 +173,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::setupUI() {
     auto *centralWidget = new QWidget(this);
+    centralWidget->setObjectName("centralWidget");
+    centralWidget->setAttribute(Qt::WA_StyledBackground, true);
     setCentralWidget(centralWidget);
 
     auto *rootLayout = new QVBoxLayout(centralWidget);
@@ -278,6 +338,19 @@ void MainWindow::repositionOverlays() {
     m_osdLabel->raise();
 }
 
+void MainWindow::applyWindowTheme() {
+#if defined(Q_OS_WIN)
+    setWindowsWindowDarkTheme(winId());
+#else
+    setLinuxWindowDarkThemeVariant(winId());
+#endif
+}
+
+void MainWindow::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);
+    applyWindowTheme();
+}
+
 void MainWindow::resizeEvent(QResizeEvent *event) {
     QMainWindow::resizeEvent(event);
     repositionOverlays();
@@ -430,6 +503,7 @@ void MainWindow::togglePiP() {
         show();
         raise();
         activateWindow();
+        applyWindowTheme();
         if (windowHandle()) {
             windowHandle()->setFlag(Qt::WindowStaysOnTopHint, true);
         }
@@ -447,6 +521,7 @@ void MainWindow::togglePiP() {
         show();
         raise();
         activateWindow();
+        applyWindowTheme();
         if (windowHandle()) {
             windowHandle()->setFlag(Qt::WindowStaysOnTopHint, false);
         }

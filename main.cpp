@@ -1,4 +1,7 @@
 #include <QApplication>
+#include <QPalette>
+#include <QColor>
+#include <QStyleHints>
 #include "src/ui/MainWindow.h"
 #include "src/utils/IconHelper.h"
 
@@ -29,6 +32,30 @@ int main(int argc, char *argv[]) {
     app.setOrganizationName("LionStudio");
     app.setApplicationVersion("2.0.0");
     app.setDesktopFileName("lionvideo");
+
+    // Configure consistent dark theme palette across Qt versions and platforms,
+    // ensuring Ubuntu 22.04 LTS (Qt 6.2) and Windows match Ubuntu 24.04/26.04 (Qt 6.5+)
+    QPalette darkPalette;
+    darkPalette.setColor(QPalette::Window, QColor(26, 26, 30));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Base, QColor(18, 18, 20));
+    darkPalette.setColor(QPalette::AlternateBase, QColor(26, 26, 30));
+    darkPalette.setColor(QPalette::ToolTipBase, QColor(36, 36, 38));
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, Qt::white);
+    darkPalette.setColor(QPalette::Button, QColor(26, 26, 30));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Link, QColor(96, 205, 255));
+    darkPalette.setColor(QPalette::Highlight, QColor(96, 205, 255));
+    darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+    app.setPalette(darkPalette);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    if (app.styleHints()) {
+        app.styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+    }
+#endif
 
     // Set application and taskbar icon using provided branding
     app.setWindowIcon(utils::IconHelper::getAppIcon());

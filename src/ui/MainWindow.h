@@ -38,6 +38,7 @@ public slots:
     void showContextMenu(const QPoint &globalPos);
 
 protected:
+    void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -60,6 +61,7 @@ private:
     void repositionOverlays();
     void showControls();
     void hideControls();
+    void applyWindowTheme();
     bool handleKeyPress(QKeyEvent *event);
 
     core::MediaPlayerEngine *m_engine = nullptr;

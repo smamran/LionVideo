@@ -1,11 +1,14 @@
 #include "OSDLabel.h"
 #include <algorithm>
+#include <QPainter>
+#include <QStyleOption>
 
 namespace ui {
 
 OSDLabel::OSDLabel(QWidget *parent)
     : QWidget(parent) {
     setObjectName("OSDContainer");
+    setAttribute(Qt::WA_StyledBackground, true);
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setStyleSheet(
         "#OSDContainer {"
@@ -90,6 +93,14 @@ void OSDLabel::startFadeOut() {
         }
     });
     m_fadeAnimation->start();
+}
+
+void OSDLabel::paintEvent(QPaintEvent *event) {
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    QWidget::paintEvent(event);
 }
 
 void OSDLabel::reposition(const QSize &parentSize) {

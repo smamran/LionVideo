@@ -30,6 +30,7 @@ signals:
     void filesDropped(const QList<QUrl> &urls);
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dropEvent(QDropEvent *event) override;

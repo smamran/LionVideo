@@ -9,12 +9,15 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QDir>
+#include <QPainter>
+#include <QStyleOption>
 
 namespace ui {
 
 PlaylistDrawer::PlaylistDrawer(QWidget *parent)
     : QWidget(parent) {
     setObjectName("PlaylistDrawerWidget");
+    setAttribute(Qt::WA_StyledBackground, true);
     setFixedWidth(300);
     setAcceptDrops(true);
 
@@ -203,6 +206,14 @@ void PlaylistDrawer::dragMoveEvent(QDragMoveEvent *event) {
     if (event->mimeData()->hasUrls()) {
         event->acceptProposedAction();
     }
+}
+
+void PlaylistDrawer::paintEvent(QPaintEvent *event) {
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    QWidget::paintEvent(event);
 }
 
 void PlaylistDrawer::dropEvent(QDropEvent *event) {

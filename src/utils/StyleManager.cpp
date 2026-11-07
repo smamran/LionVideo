@@ -4,6 +4,12 @@ namespace utils {
 
 QString StyleManager::getApplicationStyleSheet() {
     return QString(R"(
+        QMainWindow {
+            background-color: #141416;
+        }
+        #centralWidget {
+            background-color: #141416;
+        }
         QWidget {
             font-family: 'Segoe UI Variable Display', 'Segoe UI', -apple-system, sans-serif;
             font-size: 13px;
@@ -77,24 +83,24 @@ QString StyleManager::getControlBarStyleSheet() {
 QString StyleManager::getTitleBarStyleSheet() {
     return QString(R"(
         #TitleBarWidget {
-            background-color: #1A1A1C;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: #1A1A1E;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
         #TitleLabel {
             font-size: 12px;
             font-weight: 500;
-            color: #CCCCCC;
+            color: #D0D0D4;
         }
-        #TitleBarBtn {
+        .TitleBtn, #TitleBarBtn {
             background: transparent;
             border: none;
             border-radius: 4px;
             padding: 4px;
         }
-        #TitleBarBtn:hover {
+        .TitleBtn:hover, #TitleBarBtn:hover {
             background-color: rgba(255, 255, 255, 0.08);
         }
-        #TitleBarBtn:pressed {
+        .TitleBtn:pressed, #TitleBarBtn:pressed {
             background-color: rgba(255, 255, 255, 0.14);
         }
         #CloseBtn {

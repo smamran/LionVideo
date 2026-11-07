@@ -3,12 +3,15 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QWindow>
+#include <QPainter>
+#include <QStyleOption>
 
 namespace ui {
 
 TitleBar::TitleBar(QWidget *parent)
     : QWidget(parent) {
     setObjectName("TitleBarWidget");
+    setAttribute(Qt::WA_StyledBackground, true);
     setFixedHeight(36);
     setStyleSheet(
         "#TitleBarWidget {"
@@ -169,6 +172,14 @@ void TitleBar::mouseReleaseEvent(QMouseEvent *event) {
         return;
     }
     QWidget::mouseReleaseEvent(event);
+}
+
+void TitleBar::paintEvent(QPaintEvent *event) {
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    QWidget::paintEvent(event);
 }
 
 void TitleBar::mouseDoubleClickEvent(QMouseEvent *event) {

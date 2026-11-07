@@ -5,12 +5,15 @@
 #include <QGraphicsDropShadowEffect>
 #include <QActionGroup>
 #include <QWindow>
+#include <QPainter>
+#include <QStyleOption>
 
 namespace ui {
 
 ControlBar::ControlBar(QWidget *parent)
     : QWidget(parent) {
     setObjectName("ControlBarWidget");
+    setAttribute(Qt::WA_StyledBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAttribute(Qt::WA_NoSystemBackground, true);
     setMouseTracking(true);
@@ -18,11 +21,11 @@ ControlBar::ControlBar(QWidget *parent)
 }
 
 QSize ControlBar::sizeHint() const {
-    return QSize(680, 80);
+    return m_isPiP ? QSize(320, 72) : QSize(680, 80);
 }
 
 QSize ControlBar::minimumSizeHint() const {
-    return QSize(280, 76);
+    return m_isPiP ? QSize(260, 68) : QSize(280, 76);
 }
 
 void ControlBar::setupUI() {
@@ -112,21 +115,21 @@ void ControlBar::setupUI() {
     shadow->setOffset(0, 4);
     setGraphicsEffect(shadow);
 
-    auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(14, 8, 14, 10);
-    mainLayout->setSpacing(6);
+    m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setContentsMargins(14, 8, 14, 10);
+    m_mainLayout->setSpacing(6);
 
     // 1. Seekbar
     m_seekBar = new ClickableSlider(Qt::Horizontal, this);
     m_seekBar->setAttribute(Qt::WA_TranslucentBackground, true);
     m_seekBar->setStyleSheet("background: transparent;");
     connect(m_seekBar, &ClickableSlider::seekRequested, this, &ControlBar::seekRequested);
-    mainLayout->addWidget(m_seekBar);
+    m_mainLayout->addWidget(m_seekBar);
 
     // 2. Control Row
-    auto *bottomLayout = new QHBoxLayout();
-    bottomLayout->setContentsMargins(0, 0, 0, 0);
-    bottomLayout->setSpacing(8);
+    m_bottomLayout = new QHBoxLayout();
+    m_bottomLayout->setContentsMargins(0, 0, 0, 0);
+    m_bottomLayout->setSpacing(8);
 
     // Playback buttons group
     m_prevBtn = new QPushButton(this);
@@ -156,9 +159,9 @@ void ControlBar::setupUI() {
     m_nextBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_nextBtn, &QPushButton::clicked, this, &ControlBar::nextClicked);
 
-    bottomLayout->addWidget(m_prevBtn);
-    bottomLayout->addWidget(m_playBtn);
-    bottomLayout->addWidget(m_nextBtn);
+    m_bottomLayout->addWidget(m_prevBtn);
+    m_bottomLayout->addWidget(m_playBtn);
+    m_bottomLayout->addWidget(m_nextBtn);
 
     // Volume group
     m_volumeBtn = new QPushButton(this);
@@ -181,14 +184,23 @@ void ControlBar::setupUI() {
     m_volumeSlider->setFocusPolicy(Qt::NoFocus);
     connect(m_volumeSlider, &QSlider::valueChanged, this, &ControlBar::volumeChanged);
 
-    bottomLayout->addWidget(m_volumeBtn);
-    bottomLayout->addWidget(m_volumeSlider);
+    // PiP volume-to-time spacer (visible only in PiP mode to provide a dedicated gap)
+    m_pipVolumeTimeSpacer = new QWidget(this);
+    m_pipVolumeTimeSpacer->setFixedWidth(10);
+    m_pipVolumeTimeSpacer->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_pipVolumeTimeSpacer->setStyleSheet("background: transparent;");
+    m_pipVolumeTimeSpacer->hide();
 
     // Time Label
     m_timeLabel = new QLabel("00:00 / 00:00", this);
-    bottomLayout->addWidget(m_timeLabel);
+    m_timeLabel->setObjectName("TimeLabel");
 
-    bottomLayout->addStretch(1);
+    m_bottomLayout->addWidget(m_volumeBtn);
+    m_bottomLayout->addWidget(m_volumeSlider);
+    m_bottomLayout->addWidget(m_pipVolumeTimeSpacer);
+    m_bottomLayout->addWidget(m_timeLabel);
+
+    m_bottomLayout->addStretch(1);
 
     // Speed button
     m_speedBtn = new QPushButton("1.0x", this);
@@ -197,7 +209,7 @@ void ControlBar::setupUI() {
     m_speedBtn->setToolTip("Playback Speed");
     m_speedBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_speedBtn, &QPushButton::clicked, this, &ControlBar::showSpeedMenu);
-    bottomLayout->addWidget(m_speedBtn);
+    m_bottomLayout->addWidget(m_speedBtn);
 
     // Loop button
     m_loopBtn = new QPushButton(this);
@@ -208,7 +220,7 @@ void ControlBar::setupUI() {
     m_loopBtn->setToolTip("Loop Mode: Off (L)");
     m_loopBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_loopBtn, &QPushButton::clicked, this, &ControlBar::loopToggled);
-    bottomLayout->addWidget(m_loopBtn);
+    m_bottomLayout->addWidget(m_loopBtn);
 
     // Shuffle button
     m_shuffleBtn = new QPushButton(this);
@@ -219,7 +231,7 @@ void ControlBar::setupUI() {
     m_shuffleBtn->setToolTip("Shuffle: Off (S)");
     m_shuffleBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_shuffleBtn, &QPushButton::clicked, this, &ControlBar::shuffleToggled);
-    bottomLayout->addWidget(m_shuffleBtn);
+    m_bottomLayout->addWidget(m_shuffleBtn);
 
     // PiP Button
     m_pipBtn = new QPushButton(this);
@@ -230,7 +242,7 @@ void ControlBar::setupUI() {
     m_pipBtn->setToolTip("Picture-in-Picture (P)");
     m_pipBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_pipBtn, &QPushButton::clicked, this, &ControlBar::pipToggled);
-    bottomLayout->addWidget(m_pipBtn);
+    m_bottomLayout->addWidget(m_pipBtn);
 
     // Playlist button
     m_playlistBtn = new QPushButton(this);
@@ -241,7 +253,7 @@ void ControlBar::setupUI() {
     m_playlistBtn->setToolTip("Play Queue (Ctrl+Q)");
     m_playlistBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_playlistBtn, &QPushButton::clicked, this, &ControlBar::playlistToggled);
-    bottomLayout->addWidget(m_playlistBtn);
+    m_bottomLayout->addWidget(m_playlistBtn);
 
     // Fullscreen button
     m_fullscreenBtn = new QPushButton(this);
@@ -252,9 +264,9 @@ void ControlBar::setupUI() {
     m_fullscreenBtn->setToolTip("Fullscreen (F)");
     m_fullscreenBtn->setFocusPolicy(Qt::NoFocus);
     connect(m_fullscreenBtn, &QPushButton::clicked, this, &ControlBar::fullscreenToggled);
-    bottomLayout->addWidget(m_fullscreenBtn);
+    m_bottomLayout->addWidget(m_fullscreenBtn);
 
-    mainLayout->addLayout(bottomLayout);
+    m_mainLayout->addLayout(m_bottomLayout);
 }
 
 void ControlBar::setPlaybackState(QMediaPlayer::PlaybackState state) {
@@ -265,18 +277,27 @@ void ControlBar::setPlaybackState(QMediaPlayer::PlaybackState state) {
     }
 }
 
+void ControlBar::updateTimeDisplay() {
+    if (m_isPiP && width() < 360) {
+        m_timeLabel->setText(utils::TimeFormatter::formatTime(m_currentPosition, m_currentDuration >= 3600000));
+    } else {
+        m_timeLabel->setText(utils::TimeFormatter::formatTimeWithTotal(m_currentPosition, m_currentDuration));
+    }
+    m_timeLabel->setToolTip(utils::TimeFormatter::formatTimeWithTotal(m_currentPosition, m_currentDuration));
+}
+
 void ControlBar::setPosition(qint64 positionMs) {
     m_currentPosition = positionMs;
     if (!m_seekBar->isSliderDown()) {
         m_seekBar->setValue(positionMs);
     }
-    m_timeLabel->setText(utils::TimeFormatter::formatTimeWithTotal(m_currentPosition, m_currentDuration));
+    updateTimeDisplay();
 }
 
 void ControlBar::setDuration(qint64 durationMs) {
     m_currentDuration = durationMs;
     m_seekBar->setRange(0, durationMs);
-    m_timeLabel->setText(utils::TimeFormatter::formatTimeWithTotal(m_currentPosition, m_currentDuration));
+    updateTimeDisplay();
 }
 
 void ControlBar::setVolume(int volumePercent) {
@@ -385,6 +406,63 @@ void ControlBar::setPiPMode(bool isPiP) {
     m_loopBtn->setVisible(!isPiP);
     m_shuffleBtn->setVisible(!isPiP);
     m_playlistBtn->setVisible(!isPiP);
+    m_volumeSlider->setVisible(!isPiP);
+    if (m_pipVolumeTimeSpacer) {
+        m_pipVolumeTimeSpacer->setVisible(isPiP);
+    }
+
+    if (isPiP) {
+        m_prevBtn->setFixedSize(28, 28);
+        m_prevBtn->setIconSize(QSize(14, 14));
+        m_playBtn->setFixedSize(32, 32);
+        m_playBtn->setIconSize(QSize(16, 16));
+        m_nextBtn->setFixedSize(28, 28);
+        m_nextBtn->setIconSize(QSize(14, 14));
+        m_volumeBtn->setFixedSize(28, 28);
+        m_volumeBtn->setIconSize(QSize(14, 14));
+        m_pipBtn->setFixedSize(28, 28);
+        m_pipBtn->setIconSize(QSize(14, 14));
+        m_fullscreenBtn->setFixedSize(28, 28);
+        m_fullscreenBtn->setIconSize(QSize(14, 14));
+
+        if (m_mainLayout) {
+            m_mainLayout->setContentsMargins(8, 6, 8, 8);
+        }
+        if (m_bottomLayout) {
+            m_bottomLayout->setSpacing(6);
+        }
+        m_timeLabel->setStyleSheet("#TimeLabel { font-size: 11px; color: #CCCCCC; background: transparent; }");
+    } else {
+        m_prevBtn->setFixedSize(32, 32);
+        m_prevBtn->setIconSize(QSize(16, 16));
+        m_playBtn->setFixedSize(36, 36);
+        m_playBtn->setIconSize(QSize(18, 18));
+        m_nextBtn->setFixedSize(32, 32);
+        m_nextBtn->setIconSize(QSize(16, 16));
+        m_volumeBtn->setFixedSize(30, 30);
+        m_volumeBtn->setIconSize(QSize(16, 16));
+        m_pipBtn->setFixedSize(30, 30);
+        m_pipBtn->setIconSize(QSize(16, 16));
+        m_fullscreenBtn->setFixedSize(30, 30);
+        m_fullscreenBtn->setIconSize(QSize(16, 16));
+
+        if (m_mainLayout) {
+            m_mainLayout->setContentsMargins(14, 8, 14, 10);
+        }
+        if (m_bottomLayout) {
+            m_bottomLayout->setSpacing(8);
+        }
+        m_timeLabel->setStyleSheet("#TimeLabel { font-size: 12px; color: #CCCCCC; background: transparent; }");
+    }
+
+    updateTimeDisplay();
+}
+
+void ControlBar::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    if (m_isPiP) {
+        updateTimeDisplay();
+    }
 }
 
 void ControlBar::enterEvent(QEnterEvent *event) {
@@ -433,6 +511,14 @@ void ControlBar::mouseMoveEvent(QMouseEvent *event) {
         }
     }
     QWidget::mouseMoveEvent(event);
+}
+
+void ControlBar::paintEvent(QPaintEvent *event) {
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    QWidget::paintEvent(event);
 }
 
 void ControlBar::mouseReleaseEvent(QMouseEvent *event) {

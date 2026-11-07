@@ -49,6 +49,8 @@ signals:
     void mouseHoverStateChanged(bool isHovered);
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
     void enterEvent(QEnterEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -61,6 +63,11 @@ private slots:
 
 private:
     void setupUI();
+    void updateTimeDisplay();
+
+    QVBoxLayout *m_mainLayout = nullptr;
+    QHBoxLayout *m_bottomLayout = nullptr;
+    QWidget *m_pipVolumeTimeSpacer = nullptr;
 
     ClickableSlider *m_seekBar = nullptr;
     QLabel *m_timeLabel = nullptr;
